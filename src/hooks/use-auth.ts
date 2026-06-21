@@ -42,5 +42,16 @@ export function useAuth() {
     return data
   }, [supabase.auth])
 
-  return { user, loading, signOut, signInWithEmail, signUpWithEmail }
+  const signInWithGoogle = useCallback(async () => {
+    const redirectTo = typeof window !== 'undefined'
+      ? `${window.location.origin}/dashboard`
+      : '/dashboard'
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    })
+    if (error) throw error
+  }, [supabase.auth])
+
+  return { user, loading, signOut, signInWithEmail, signUpWithEmail, signInWithGoogle }
 }
