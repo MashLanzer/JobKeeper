@@ -43,6 +43,26 @@ export function useAuth() {
   }, [supabase.auth])
 
   const signInWithGoogle = useCallback(async () => {
+    const { Capacitor } = await import('@capacitor/core')
+
+    // En la APK: deep link de vuelta a la app + navegador del sistema
+    if (Capacitor.isNativePlatform()) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'com.workledger.app://auth',
+          skipBrowserRedirect: true,
+        },
+      })
+      if (error) throw error
+      if (data?.url) {
+        const { Browser } = await import('@capacitor/browser')
+        await Browser.open({ url: data.url })
+      }
+      return
+    }
+
+    // En web: redirección normal al callback
     const redirectTo = typeof window !== 'undefined'
       ? `${window.location.origin}/auth/callback?next=/dashboard`
       : '/auth/callback?next=/dashboard'

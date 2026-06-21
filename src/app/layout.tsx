@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from '@/components/providers/theme-provider'
+import { NativeAuthListener } from '@/components/providers/native-auth'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,6 +21,7 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider>
+          <NativeAuthListener />
           {children}
           <Toaster
             position="top-center"
