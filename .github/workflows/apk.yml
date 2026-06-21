@@ -5,12 +5,6 @@ on:
   push:
     branches:
       - claude/workledger-app-development-yoh3b2
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'capacitor.config.ts'
-      - 'next.config.ts'
 
 jobs:
   build-apk:
