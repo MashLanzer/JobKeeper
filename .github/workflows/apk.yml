@@ -57,17 +57,3 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: apk-v${{ github.run_number }}
-          name: WorkLedger APK v${{ github.run_number }}
-          body: |
-            ## WorkLedger Android APK
-
-            Descarga e instala `app-debug.apk` en tu dispositivo Android.
-
-            > Esta versión carga la app desde la URL de producción configurada.
-          files: android/app/build/outputs/apk/debug/app-debug.apk
-          draft: false
-          prerelease: false
