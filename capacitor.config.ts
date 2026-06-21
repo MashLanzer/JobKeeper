@@ -1,14 +1,4 @@
-// Capacitor configuration
-// Install @capacitor/cli to use: npm install -D @capacitor/cli
-
-interface CapacitorConfig {
-  appId: string
-  appName: string
-  webDir: string
-  server?: {
-    androidScheme?: string
-  }
-}
+import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.workledger.app',
