@@ -6,6 +6,9 @@ on:
     branches:
       - claude/workledger-app-development-yoh3b2
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build APK
@@ -57,3 +60,12 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v${{ github.run_number }}
+          name: WorkLedger APK v${{ github.run_number }}
+          body: |
+            ## WorkLedger APK v${{ github.run_number }}
+            Instala `app-debug.apk` directamente en tu Android.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
