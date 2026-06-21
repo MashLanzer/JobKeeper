@@ -10,6 +10,13 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     ...(liveUrl ? { url: liveUrl, cleartext: false } : {}),
   },
+  plugins: {
+    GoogleAuth: {
+      scopes: ['profile', 'email'],
+      serverClientId: '379824223556-j3nl02vbf8b4cgebe9jisft80a3q7162.apps.googleusercontent.com',
+      forceCodeForRefreshToken: true,
+    },
+  },
 }
 
 export default config

@@ -45,20 +45,18 @@ export function useAuth() {
   const signInWithGoogle = useCallback(async () => {
     const { Capacitor } = await import('@capacitor/core')
 
-    // En la APK: deep link de vuelta a la app + navegador del sistema
+    // En la APK: login nativo (popup de Google sin abrir el navegador)
     if (Capacitor.isNativePlatform()) {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth')
+      await GoogleAuth.initialize()
+      const googleUser = await GoogleAuth.signIn()
+      const idToken = googleUser.authentication?.idToken
+      if (!idToken) throw new Error('No se obtuvo token de Google')
+      const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
-        options: {
-          redirectTo: 'com.workledger.app://auth',
-          skipBrowserRedirect: true,
-        },
+        token: idToken,
       })
       if (error) throw error
-      if (data?.url) {
-        const { Browser } = await import('@capacitor/browser')
-        await Browser.open({ url: data.url })
-      }
       return
     }
 
