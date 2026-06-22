@@ -51,18 +51,7 @@ jobs:
         run: |
           echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
           echo "=== CLIENTES OAuth EN google-services.json ==="
-          python3 -c "
-import json
-with open('android/app/google-services.json') as f:
-    d = json.load(f)
-for client in d.get('client', []):
-    pkg = client.get('client_info', {}).get('android_client_info', {}).get('package_name', 'N/A')
-    print(f'Package: {pkg}')
-    for oc in client.get('oauth_client', []):
-        cid = oc.get('client_id','')
-        ctype = oc.get('client_type','')
-        print(f'  client_type={ctype}  client_id={cid[:30]}...')
-"
+          jq -r '.client[] | "Package: \(.client_info.android_client_info.package_name // "N/A")", (.oauth_client[] | "  client_type=\(.client_type)  client_id=\(.client_id[0:40])")' android/app/google-services.json
 
       - name: Add deep link to AndroidManifest
         run: python3 scripts/patch-android-manifest.py
