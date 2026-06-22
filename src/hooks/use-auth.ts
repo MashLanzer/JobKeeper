@@ -46,31 +46,16 @@ export function useAuth() {
     const { Capacitor } = await import('@capacitor/core')
 
     if (Capacitor.isNativePlatform()) {
-      try {
-        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth')
-        await GoogleAuth.initialize()
-        const googleUser = await GoogleAuth.signIn()
-        const idToken = googleUser.authentication?.idToken
-        if (!idToken) {
-          const info = JSON.stringify({ auth: googleUser.authentication, email: googleUser.email })
-          alert(`[DEBUG] Sin idToken. Datos: ${info}`)
-          throw new Error('No se obtuvo idToken de Google')
-        }
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        })
-        if (error) {
-          alert(`[DEBUG] Error Supabase: ${error.message} (${error.status ?? ''})`)
-          throw error
-        }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err)
-        if (!msg.startsWith('[DEBUG]') && !msg.includes('idToken') && !msg.includes('Supabase')) {
-          alert(`[DEBUG] Error GoogleAuth.signIn: ${msg}`)
-        }
-        throw err
-      }
+      const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth')
+      await GoogleAuth.initialize()
+      const googleUser = await GoogleAuth.signIn()
+      const idToken = googleUser.authentication?.idToken
+      if (!idToken) throw new Error('No se obtuvo idToken de Google')
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      })
+      if (error) throw error
       return
     }
 
