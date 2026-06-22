@@ -37,6 +37,8 @@ jobs:
         run: |
           mkdir -p ~/.android
           cp android-debug.keystore ~/.android/debug.keystore
+          echo "=== SHA-1 DEL KEYSTORE ==="
+          keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey 2>/dev/null | grep -E "SHA1:|SHA256:"
 
       - name: Add Android platform
         env:
@@ -46,7 +48,21 @@ jobs:
       - name: Inject google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+        run: |
+          echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          echo "=== CLIENTES OAuth EN google-services.json ==="
+          python3 -c "
+import json
+with open('android/app/google-services.json') as f:
+    d = json.load(f)
+for client in d.get('client', []):
+    pkg = client.get('client_info', {}).get('android_client_info', {}).get('package_name', 'N/A')
+    print(f'Package: {pkg}')
+    for oc in client.get('oauth_client', []):
+        cid = oc.get('client_id','')
+        ctype = oc.get('client_type','')
+        print(f'  client_type={ctype}  client_id={cid[:30]}...')
+"
 
       - name: Add deep link to AndroidManifest
         run: python3 scripts/patch-android-manifest.py
