@@ -46,33 +46,25 @@ export function useAuth() {
     const { Capacitor } = await import('@capacitor/core')
 
     if (Capacitor.isNativePlatform()) {
-      const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth')
-      try {
-        await GoogleAuth.initialize({
-          clientId: '1050862543307-u88inlu21qv80r3t072568t3fo357dn2.apps.googleusercontent.com',
-          scopes: ['profile', 'email'],
-          grantOfflineAccess: false,
-        })
-        const googleUser = await GoogleAuth.signIn()
-        const idToken = googleUser.authentication?.idToken
-        if (!idToken) throw new Error('No idToken recibido de Google')
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        })
-        if (error) throw error
-      } catch (err: unknown) {
-        const msg = err instanceof Error
-          ? err.message
-          : typeof err === 'string'
-            ? err
-            : JSON.stringify(err)
-        throw new Error(`[Android] ${msg}`)
-      }
+      // En Android abrimos el login de Google en el navegador del sistema
+      // (Google bloquea OAuth dentro de webviews). Al terminar, Supabase
+      // redirige al deep link com.workledger.app://auth/callback, que reabre
+      // la app; NativeAuthListener captura el código y completa la sesión.
+      const { Browser } = await import('@capacitor/browser')
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'com.workledger.app://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      })
+      if (error) throw error
+      if (!data?.url) throw new Error('No se pudo iniciar el login con Google')
+      await Browser.open({ url: data.url, presentationStyle: 'popover' })
       return
     }
 
-    // En web: redirección normal al callback
+    // En web: redirección normal al callback del servidor
     const redirectTo = typeof window !== 'undefined'
       ? `${window.location.origin}/auth/callback?next=/dashboard`
       : '/auth/callback?next=/dashboard'

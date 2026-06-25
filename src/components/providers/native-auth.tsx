@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
 /**
@@ -26,17 +27,29 @@ export function NativeAuthListener() {
 
       const handle = await App.addListener('appUrlOpen', async ({ url }) => {
         if (!url.includes('auth')) return
+        // Cerramos el navegador del sistema en cuanto volvemos a la app
+        await Browser.close().catch(() => {})
         try {
-          const code = new URL(url).searchParams.get('code')
-          if (code) {
-            await supabase.auth.exchangeCodeForSession(code)
+          const parsed = new URL(url)
+          const errorDescription =
+            parsed.searchParams.get('error_description') ||
+            parsed.searchParams.get('error')
+          if (errorDescription) {
+            toast.error(`Google: ${errorDescription}`)
+            return
           }
-        } catch {
-          // ignorar errores de parseo
-        } finally {
-          await Browser.close().catch(() => {})
+          const code = parsed.searchParams.get('code')
+          if (!code) return
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) {
+            toast.error(`No se pudo completar el inicio de sesión: ${error.message}`)
+            return
+          }
+          // Solo navegamos al dashboard si la sesión se creó correctamente
           router.push('/dashboard')
           router.refresh()
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Error al completar el inicio de sesión')
         }
       })
 
