@@ -2,8 +2,8 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,15 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const error = searchParams.get('error')
+    const message = searchParams.get('message')
+    if (error) {
+      toast.error(message ? `Error OAuth: ${message}` : 'Error al iniciar sesión con Google', { duration: 10000 })
+    }
+  }, [searchParams])
 
   const handleGoogle = async () => {
     try {

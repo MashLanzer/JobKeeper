@@ -34,8 +34,9 @@ export async function GET(request: Request) {
     if (!error) {
       return response
     }
+    const params = new URLSearchParams({ error: 'callback_failed', message: error.message })
+    return NextResponse.redirect(`${origin}/login?${params}`)
   }
 
-  // Si algo falla, de vuelta al login con un mensaje
-  return NextResponse.redirect(`${origin}/login?error=auth`)
+  return NextResponse.redirect(`${origin}/login?error=no_code`)
 }
