@@ -47,15 +47,28 @@ export function useAuth() {
 
     if (Capacitor.isNativePlatform()) {
       const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth')
-      await GoogleAuth.initialize()
-      const googleUser = await GoogleAuth.signIn()
-      const idToken = googleUser.authentication?.idToken
-      if (!idToken) throw new Error('No se obtuvo idToken de Google')
-      const { error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: idToken,
-      })
-      if (error) throw error
+      try {
+        await GoogleAuth.initialize({
+          clientId: '1050862543307-u88inlu21qv80r3t072568t3fo357dn2.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: false,
+        })
+        const googleUser = await GoogleAuth.signIn()
+        const idToken = googleUser.authentication?.idToken
+        if (!idToken) throw new Error('No idToken recibido de Google')
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: idToken,
+        })
+        if (error) throw error
+      } catch (err: unknown) {
+        const msg = err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : JSON.stringify(err)
+        throw new Error(`[Android] ${msg}`)
+      }
       return
     }
 
