@@ -68,6 +68,12 @@ export interface DashboardStats {
 }
 
 export const JOB_CATEGORIES = [
+  'A/C - Instalación',
+  'A/C - Mantenimiento',
+  'A/C - Reparación',
+  'A/C - Limpieza',
+  'Refrigeración',
+  'Ventilación/Ductos',
   'Mantenimiento/Reparaciones',
   'Tecnología/Freelance',
   'Servicios en campo',
