@@ -30,7 +30,7 @@ export function Header() {
   const initials = getInitials(email.split('@')[0] || 'U')
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-sm pt-safe">
       <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
