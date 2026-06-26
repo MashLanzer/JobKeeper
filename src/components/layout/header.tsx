@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { LogOut, Moon, Sun, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NotificationBell } from '@/components/notifications/notification-bell'
@@ -56,6 +57,13 @@ export function Header() {
               <div className="px-2 py-1.5">
                 <p className="text-xs text-muted-foreground truncate">{email}</p>
               </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/configuracion">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configuración
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

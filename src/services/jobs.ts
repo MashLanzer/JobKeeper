@@ -114,6 +114,38 @@ export async function getJobsByMonth(year: number, month: number): Promise<Job[]
   return data as Job[]
 }
 
+export async function getIncomeTrend(months = 6) {
+  const supabase = createClient()
+  const now = new Date()
+
+  const periods = Array.from({ length: months }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1)
+    return {
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      startDate: new Date(d.getFullYear(), d.getMonth(), 1).toISOString(),
+      endDate: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString(),
+    }
+  })
+
+  const responses = await Promise.all(
+    periods.map(({ startDate, endDate }) =>
+      supabase
+        .from('jobs')
+        .select('price')
+        .eq('status', 'completado')
+        .gte('completed_at', startDate)
+        .lte('completed_at', endDate)
+    )
+  )
+
+  return periods.map(({ year, month }, i) => ({
+    year,
+    month,
+    income: (responses[i].data || []).reduce((sum, job) => sum + Number(job.price), 0),
+  }))
+}
+
 export async function getDashboardStats() {
   const supabase = createClient()
 

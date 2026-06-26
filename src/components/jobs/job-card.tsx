@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { MapPin, Clock, DollarSign, User } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDateTime, cn } from '@/lib/utils'
 import type { Job } from '@/types'
 
 interface JobCardProps {
@@ -33,14 +33,33 @@ function PaymentBadge({ price, deposit }: { price: number; deposit: number }) {
   )
 }
 
+function isOverdue(job: Job) {
+  return (
+    job.scheduled_at &&
+    new Date(job.scheduled_at) < new Date() &&
+    (job.status === 'pendiente' || job.status === 'en_progreso')
+  )
+}
+
 export function JobCard({ job }: JobCardProps) {
+  const overdue = isOverdue(job)
   return (
     <Link href={`/trabajos/${job.id}`}>
-      <Card className="hover:border-primary/50 transition-colors active:scale-[0.99]">
+      <Card className={cn(
+        'hover:border-primary/50 transition-colors active:scale-[0.99]',
+        overdue && 'border-destructive/40 bg-destructive/[0.02]'
+      )}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2 mb-3">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground truncate">{job.title}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-semibold text-foreground truncate">{job.title}</h3>
+                {overdue && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive whitespace-nowrap flex-shrink-0">
+                    Vencido
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">{job.category}</p>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">

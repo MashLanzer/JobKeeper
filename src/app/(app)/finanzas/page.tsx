@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCardSkeleton } from '@/components/shared/loading-skeleton'
 import { getFinanceSummary, getExpensesByMonth } from '@/services/expenses'
-import { getJobsByMonth } from '@/services/jobs'
+import { getJobsByMonth, getIncomeTrend } from '@/services/jobs'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -35,13 +35,58 @@ interface FinanceSummary {
   expensesByCategory: Record<string, number>
 }
 
+interface MonthlyIncome {
+  year: number
+  month: number
+  income: number
+}
+
+const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+function IncomeTrendChart({ data }: { data: MonthlyIncome[] }) {
+  const max = Math.max(...data.map(d => d.income), 1)
+  const now = new Date()
+
+  return (
+    <div className="flex items-end gap-1.5 h-28 pt-2">
+      {data.map(({ year, month, income }) => {
+        const isCurrent = year === now.getFullYear() && month === now.getMonth() + 1
+        const pct = (income / max) * 100
+        return (
+          <div key={`${year}-${month}`} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+            {income > 0 && (
+              <span className="text-[8px] text-muted-foreground leading-none">
+                {income >= 1000 ? `${Math.round(income / 1000)}k` : String(Math.round(income))}
+              </span>
+            )}
+            <div className="w-full flex-1 flex items-end">
+              <div
+                className={`w-full rounded-t-sm transition-all duration-500 ${isCurrent ? 'bg-primary' : 'bg-primary/40'}`}
+                style={{ height: pct > 0 ? `${Math.max(pct, 4)}%` : '2px', opacity: pct > 0 ? 1 : 0.2 }}
+              />
+            </div>
+            <span className={`text-[9px] leading-none ${isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+              {MONTH_SHORT[month - 1]}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function FinanzasPage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [summary, setSummary] = useState<FinanceSummary | null>(null)
   const [recentJobs, setRecentJobs] = useState<any[]>([])
+  const [incomeTrend, setIncomeTrend] = useState<MonthlyIncome[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getIncomeTrend(6).then(setIncomeTrend).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -168,6 +213,15 @@ export default function FinanzasPage() {
               </CardContent>
             </Card>
           </div>
+
+          {incomeTrend.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-3">Ingresos — últimos 6 meses</p>
+                <IncomeTrendChart data={incomeTrend} />
+              </CardContent>
+            </Card>
+          )}
 
           <Tabs defaultValue="ingresos">
             <TabsList className="w-full">
