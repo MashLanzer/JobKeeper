@@ -1,20 +1,50 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Moon, Sun, User, Mail, Palette, Info } from 'lucide-react'
+import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth'
 import { useTheme } from '@/components/providers/theme-provider'
-import { getInitials } from '@/lib/utils'
+import { getInitials, formatCurrency } from '@/lib/utils'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
+  const [goalInput, setGoalInput] = useState('')
+  const [savedGoal, setSavedGoal] = useState(0)
+
+  const goalKey = `income_goal_${user?.id || 'default'}`
+
+  useEffect(() => {
+    const val = localStorage.getItem(goalKey)
+    if (val) {
+      setSavedGoal(Number(val))
+      setGoalInput(val)
+    }
+  }, [goalKey])
+
+  const handleSaveGoal = () => {
+    const val = Number(goalInput)
+    if (isNaN(val) || val < 0) {
+      toast.error('Ingresa un monto válido')
+      return
+    }
+    if (val === 0) {
+      localStorage.removeItem(goalKey)
+      setSavedGoal(0)
+    } else {
+      localStorage.setItem(goalKey, String(val))
+      setSavedGoal(val)
+    }
+    toast.success(val === 0 ? 'Meta eliminada' : 'Meta guardada')
+  }
 
   const handleSignOut = async () => {
     try {
@@ -62,6 +92,40 @@ export default function ConfiguracionPage() {
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Mail className="h-4 w-4 flex-shrink-0" />
             <span className="truncate">{email}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Income goal */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Meta de ingresos mensual
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Define un objetivo mensual y verás el progreso en el dashboard. Pon 0 para desactivar.
+          </p>
+          {savedGoal > 0 && (
+            <p className="text-sm font-medium text-primary">
+              Meta actual: {formatCurrency(savedGoal)}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min="0"
+              step="50"
+              placeholder="Ej: 2000"
+              value={goalInput}
+              onChange={(e) => setGoalInput(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={handleSaveGoal} size="sm" className="px-4">
+              Guardar
+            </Button>
           </div>
         </CardContent>
       </Card>

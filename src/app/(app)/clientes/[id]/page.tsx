@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getClientWithJobs } from '@/services/clients'
 import { deleteClient, updateClient } from '@/services/clients'
-import { getInitials } from '@/lib/utils'
+import { getInitials, formatCurrency } from '@/lib/utils'
 import type { Client, Job } from '@/types'
 import {
   Dialog,
@@ -212,6 +212,38 @@ export default function ClienteDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Financial balance */}
+      {jobs.length > 0 && (() => {
+        const activeJobs = jobs.filter(j => j.status !== 'cancelado')
+        const totalBilled = activeJobs.reduce((s, j) => s + Number(j.price), 0)
+        const totalCollected = activeJobs.reduce((s, j) => s + Number(j.deposit), 0)
+        const balance = totalBilled - totalCollected
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Balance financiero</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total facturado</span>
+                <span className="font-semibold">{formatCurrency(totalBilled)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total cobrado</span>
+                <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(totalCollected)}</span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Saldo pendiente</span>
+                <span className={`font-bold ${balance > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                  {formatCurrency(balance)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Jobs */}
       <div>

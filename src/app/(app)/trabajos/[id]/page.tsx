@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Download } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Download, Copy, ClipboardList } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,6 +20,7 @@ export default function JobDetailPage() {
   const id = params.id as string
   const { job, loading, error, remove } = useJob(id)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [generatingQuote, setGeneratingQuote] = useState(false)
 
   const handleGeneratePDF = async () => {
     if (!job) return
@@ -163,6 +164,159 @@ export default function JobDetailPage() {
       toast.error('Error al generar el recibo')
     } finally {
       setGeneratingPdf(false)
+    }
+  }
+
+  const handleDuplicate = () => {
+    if (!job) return
+    const data = {
+      title: `${job.title} (copia)`,
+      description: job.description || '',
+      address: job.address || '',
+      category: job.category,
+      client_id: job.client_id || undefined,
+      price: job.price,
+      deposit: 0,
+      status: 'pendiente',
+      payment_method: job.payment_method || '',
+      notes: job.notes || '',
+    }
+    sessionStorage.setItem('duplicate_job', JSON.stringify(data))
+    router.push('/trabajos/nuevo')
+  }
+
+  const handleGenerateQuote = async () => {
+    if (!job) return
+    setGeneratingQuote(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+      const pageW = doc.internal.pageSize.getWidth()
+      const margin = 20
+      let y = margin
+
+      // Header
+      doc.setFillColor(79, 70, 229)
+      doc.rect(0, 0, pageW, 28, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(18)
+      doc.setTextColor(255, 255, 255)
+      doc.text('WorkLedger', margin, 17)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text('COTIZACIÓN', pageW - margin, 17, { align: 'right' })
+
+      y = 40
+      doc.setTextColor(30, 30, 30)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(14)
+      doc.text(job.title, margin, y)
+      y += 6
+
+      if (job.category) {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(100, 100, 100)
+        doc.text(job.category, margin, y)
+        y += 5
+      }
+
+      const dateStr = new Date().toLocaleDateString('es-ES', { dateStyle: 'long' })
+      doc.setFontSize(9)
+      doc.setTextColor(120, 120, 120)
+      doc.text(`Fecha: ${dateStr}`, margin, y + 2)
+      y += 10
+
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, y, pageW - margin, y)
+      y += 6
+
+      const row = (label: string, value: string) => {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(100, 100, 100)
+        doc.text(label.toUpperCase(), margin, y)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(30, 30, 30)
+        doc.text(value, margin, y + 4.5)
+        y += 12
+      }
+
+      if (job.client) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11)
+        doc.setTextColor(79, 70, 229)
+        doc.text('CLIENTE', margin, y)
+        y += 6
+        row('Nombre', job.client.name)
+        if ((job.client as any).phone) row('Teléfono', (job.client as any).phone)
+        if ((job.client as any).email) row('Email', (job.client as any).email)
+        doc.setDrawColor(220, 220, 220)
+        doc.line(margin, y, pageW - margin, y)
+        y += 6
+      }
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(79, 70, 229)
+      doc.text('DESCRIPCIÓN DEL SERVICIO', margin, y)
+      y += 6
+
+      if (job.address) row('Lugar del servicio', job.address)
+      if (job.scheduled_at) row('Fecha estimada', formatDateTime(job.scheduled_at))
+      if (job.description) {
+        const lines = doc.splitTextToSize(job.description, pageW - margin * 2)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(100, 100, 100)
+        doc.text('DESCRIPCIÓN', margin, y)
+        y += 4.5
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(30, 30, 30)
+        doc.text(lines, margin, y)
+        y += lines.length * 5 + 7
+      }
+
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, y, pageW - margin, y)
+      y += 6
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(79, 70, 229)
+      doc.text('PRECIO', margin, y)
+      y += 8
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(14)
+      doc.setTextColor(22, 163, 74)
+      doc.text(formatCurrency(job.price), pageW - margin, y, { align: 'right' })
+      y += 10
+
+      // Validity note
+      doc.setFillColor(245, 245, 255)
+      doc.roundedRect(margin, y, pageW - margin * 2, 14, 3, 3, 'F')
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(9)
+      doc.setTextColor(79, 70, 229)
+      doc.text('Esta cotización es válida por 30 días a partir de la fecha de emisión.', pageW / 2, y + 8.5, { align: 'center' })
+
+      const pageH = doc.internal.pageSize.getHeight()
+      doc.setFontSize(8)
+      doc.setTextColor(150, 150, 150)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Generado el ${dateStr}`, margin, pageH - 10)
+      doc.text('WorkLedger', pageW - margin, pageH - 10, { align: 'right' })
+
+      const safeTitle = job.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+      doc.save(`cotizacion-${safeTitle}.pdf`)
+      toast.success('Cotización generada')
+    } catch {
+      toast.error('Error al generar la cotización')
+    } finally {
+      setGeneratingQuote(false)
     }
   }
 
@@ -344,16 +498,24 @@ export default function JobDetailPage() {
       </Card>
 
       {/* Actions */}
-      <div className="flex gap-2">
-        <Button asChild className="flex-1">
+      <div className="grid grid-cols-2 gap-2">
+        <Button asChild className="col-span-2">
           <Link href={`/trabajos/${id}/editar`}>
             <Edit className="h-4 w-4 mr-2" />
             Editar trabajo
           </Link>
         </Button>
-        <Button variant="outline" onClick={handleGeneratePDF} disabled={generatingPdf} className="flex-1">
+        <Button variant="outline" onClick={handleGeneratePDF} disabled={generatingPdf}>
           <Download className="h-4 w-4 mr-2" />
           {generatingPdf ? 'Generando...' : 'Recibo PDF'}
+        </Button>
+        <Button variant="outline" onClick={handleGenerateQuote} disabled={generatingQuote}>
+          <ClipboardList className="h-4 w-4 mr-2" />
+          {generatingQuote ? 'Generando...' : 'Cotización PDF'}
+        </Button>
+        <Button variant="outline" onClick={handleDuplicate} className="col-span-2">
+          <Copy className="h-4 w-4 mr-2" />
+          Duplicar trabajo
         </Button>
       </div>
     </div>

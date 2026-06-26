@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo } from 'lucide-react'
+import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { UpcomingJobs } from '@/components/dashboard/upcoming-jobs'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
-import { getDashboardStats } from '@/services/jobs'
+import { getDashboardStats, getPendingBalance } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
 import { formatCurrency } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
@@ -19,6 +19,7 @@ interface Stats {
   expensesThisMonth: number
   netProfitThisMonth: number
   upcomingJobs: any[]
+  pendingBalance: number
 }
 
 function getGreeting(user: { email?: string | null; user_metadata?: Record<string, string> } | null) {
@@ -42,14 +43,22 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [incomeGoal, setIncomeGoal] = useState(0)
+
+  useEffect(() => {
+    const goalKey = `income_goal_${user?.id || 'default'}`
+    const saved = localStorage.getItem(goalKey)
+    if (saved) setIncomeGoal(Number(saved))
+  }, [user?.id])
 
   useEffect(() => {
     const loadStats = async () => {
       try {
         const now = new Date()
-        const [jobStats, financeStats] = await Promise.all([
+        const [jobStats, financeStats, pendingBalance] = await Promise.all([
           getDashboardStats(),
           getFinanceSummary(now.getFullYear(), now.getMonth() + 1),
+          getPendingBalance(),
         ])
 
         setStats({
@@ -59,6 +68,7 @@ export default function DashboardPage() {
           expensesThisMonth: financeStats.totalExpenses,
           netProfitThisMonth: financeStats.netProfit,
           upcomingJobs: jobStats.upcomingJobs,
+          pendingBalance,
         })
       } catch (err) {
         console.error('Error loading dashboard:', err)
@@ -99,6 +109,24 @@ export default function DashboardPage() {
         </Button>
       </div>
 
+      {/* Pending balance alert */}
+      {(stats?.pendingBalance || 0) > 0 && (
+        <Link href="/trabajos">
+          <div className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Por cobrar</p>
+                <p className="text-xs text-amber-600/80 dark:text-amber-500/80">En trabajos activos</p>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
+              {formatCurrency(stats?.pendingBalance || 0)}
+            </p>
+          </div>
+        </Link>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <StatCard
           title="Ingresos del mes"
@@ -131,6 +159,30 @@ export default function DashboardPage() {
           iconBg="bg-yellow-500/10"
         />
       </div>
+
+      {/* Income goal progress */}
+      {incomeGoal > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-semibold">Meta mensual</p>
+            <p className="text-sm text-muted-foreground">
+              {formatCurrency(stats?.revenueThisMonth || 0)} / {formatCurrency(incomeGoal)}
+            </p>
+          </div>
+          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${Math.min(100, ((stats?.revenueThisMonth || 0) / incomeGoal) * 100)}%`,
+                backgroundColor: (stats?.revenueThisMonth || 0) >= incomeGoal ? '#22c55e' : 'hsl(var(--primary))',
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            {Math.round(Math.min(100, ((stats?.revenueThisMonth || 0) / incomeGoal) * 100))}% alcanzado
+          </p>
+        </div>
+      )}
 
       <UpcomingJobs jobs={stats?.upcomingJobs || []} />
     </div>

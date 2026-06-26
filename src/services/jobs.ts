@@ -114,6 +114,19 @@ export async function getJobsByMonth(year: number, month: number): Promise<Job[]
   return data as Job[]
 }
 
+export async function getPendingBalance() {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('price, deposit')
+    .neq('status', 'cancelado')
+  if (error) throw error
+  return (data || []).reduce((sum, job) => {
+    const pending = Number(job.price) - Number(job.deposit)
+    return sum + (pending > 0 ? pending : 0)
+  }, 0)
+}
+
 export async function getIncomeTrend(months = 6) {
   const supabase = createClient()
   const now = new Date()

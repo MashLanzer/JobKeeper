@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
@@ -7,11 +8,23 @@ import { Button } from '@/components/ui/button'
 import { JobForm } from '@/components/jobs/job-form'
 import { useClients } from '@/hooks/use-clients'
 import { useCreateJob } from '@/hooks/use-jobs'
+import type { Job } from '@/types'
 
 export default function NuevoTrabajoPage() {
   const router = useRouter()
   const { clients } = useClients()
   const { create, loading } = useCreateJob()
+  const [initialData, setInitialData] = useState<Partial<Job> | undefined>(undefined)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem('duplicate_job')
+    if (raw) {
+      sessionStorage.removeItem('duplicate_job')
+      setInitialData(JSON.parse(raw))
+    }
+    setReady(true)
+  }, [])
 
   const handleSubmit = async (data: any) => {
     try {
@@ -35,15 +48,21 @@ export default function NuevoTrabajoPage() {
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold">Nuevo trabajo</h1>
+        <h1 className="text-xl font-bold">
+          {initialData ? 'Duplicar trabajo' : 'Nuevo trabajo'}
+        </h1>
       </div>
 
-      <JobForm
-        clients={clients}
-        onSubmit={handleSubmit}
-        isLoading={loading}
-        submitLabel="Crear trabajo"
-      />
+      {ready && (
+        <JobForm
+          key={initialData ? 'duplicate' : 'new'}
+          initialData={initialData}
+          clients={clients}
+          onSubmit={handleSubmit}
+          isLoading={loading}
+          submitLabel="Crear trabajo"
+        />
+      )}
     </div>
   )
 }
