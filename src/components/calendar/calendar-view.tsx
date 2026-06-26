@@ -43,15 +43,20 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
   const jobsByDay = useMemo(() => {
     const map: Record<number, Job[]> = {}
     jobs.forEach((job) => {
-      if (job.scheduled_at) {
-        const d = new Date(job.scheduled_at)
-        const day = d.getDate()
-        if (!map[day]) map[day] = []
-        map[day].push(job)
+      // Usa la fecha programada, o la de creación como respaldo, para que
+      // todos los trabajos aparezcan marcados en el calendario.
+      const dateStr = job.scheduled_at || job.created_at
+      if (dateStr) {
+        const d = new Date(dateStr)
+        if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+          const day = d.getDate()
+          if (!map[day]) map[day] = []
+          map[day].push(job)
+        }
       }
     })
     return map
-  }, [jobs])
+  }, [jobs, year, month])
 
   const selectedDayJobs = selectedDay ? jobsByDay[selectedDay] || [] : []
 
@@ -183,14 +188,14 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                           {job.client && (
                             <p className="text-xs text-muted-foreground mt-0.5">{job.client.name}</p>
                           )}
-                          {job.scheduled_at && (
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </p>
-                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {job.scheduled_at
+                              ? new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Sin hora programada'}
+                          </p>
                         </div>
                         <span className="text-sm font-semibold text-green-500">
                           {formatCurrency(job.price)}

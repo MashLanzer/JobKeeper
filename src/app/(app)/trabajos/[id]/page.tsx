@@ -356,7 +356,7 @@ export default function JobDetailPage() {
   const pending = job.price - job.deposit
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

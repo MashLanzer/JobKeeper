@@ -17,7 +17,7 @@ export default function TrabajosPage() {
   const { jobs, loading, error } = useJobs(filters)
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Trabajos"
         description={`${jobs.length} trabajo${jobs.length !== 1 ? 's' : ''}`}
@@ -58,7 +58,7 @@ export default function TrabajosPage() {
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {jobs.map((job) => (
             <JobCard key={job.id} job={job} />
           ))}

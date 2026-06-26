@@ -60,7 +60,7 @@ export default function ConfiguracionPage() {
   const initials = getInitials(displayName)
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Configuración</h1>
         <p className="text-sm text-muted-foreground">Preferencias de tu cuenta</p>

@@ -32,7 +32,7 @@ export default function GastosPage() {
   }
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Gastos"
         description={loading ? '' : `${formatCurrency(totalAmount)} total`}
@@ -80,7 +80,7 @@ export default function GastosPage() {
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {expenses.map((expense) => (
             <ExpenseCard
               key={expense.id}

@@ -96,7 +96,7 @@ export default function ClienteDetailPage() {
   }
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -262,7 +262,7 @@ export default function ClienteDetailPage() {
             Este cliente no tiene trabajos registrados
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {jobs.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}

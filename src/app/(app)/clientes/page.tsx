@@ -16,7 +16,7 @@ export default function ClientesPage() {
   const { clients, loading, error } = useClients(search || undefined)
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Clientes"
         description={`${clients.length} cliente${clients.length !== 1 ? 's' : ''}`}
@@ -75,7 +75,7 @@ export default function ClientesPage() {
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {clients.map((client) => (
             <ClientCard key={client.id} client={client} />
           ))}

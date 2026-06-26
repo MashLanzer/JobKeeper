@@ -36,7 +36,7 @@ export default function CalendarioPage() {
   }
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Calendario"
         description={`${jobs.length} trabajo${jobs.length !== 1 ? 's' : ''} este mes`}

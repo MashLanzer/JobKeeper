@@ -48,7 +48,7 @@ export default function EditarTrabajoPage() {
   }
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />

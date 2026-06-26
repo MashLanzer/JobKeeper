@@ -103,11 +103,16 @@ export async function getJobsByMonth(year: number, month: number): Promise<Job[]
   const startDate = new Date(year, month - 1, 1).toISOString()
   const endDate = new Date(year, month, 0, 23, 59, 59).toISOString()
 
+  // Incluye trabajos con fecha programada en el mes, y también los que no
+  // tienen fecha programada pero fueron creados dentro del mes (para que
+  // todo trabajo aparezca en el calendario en algún día).
   const { data, error } = await supabase
     .from('jobs')
     .select('*, client:clients(id, name)')
-    .gte('scheduled_at', startDate)
-    .lte('scheduled_at', endDate)
+    .or(
+      `and(scheduled_at.gte.${startDate},scheduled_at.lte.${endDate}),` +
+      `and(scheduled_at.is.null,created_at.gte.${startDate},created_at.lte.${endDate})`
+    )
     .order('scheduled_at', { ascending: true })
 
   if (error) throw error
