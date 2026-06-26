@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DollarSign, Briefcase, Clock, TrendingDown } from 'lucide-react'
+import Link from 'next/link'
+import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { UpcomingJobs } from '@/components/dashboard/upcoming-jobs'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
 import { getDashboardStats } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
 import { formatCurrency } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Stats {
   completedThisMonth: number
@@ -18,7 +21,25 @@ interface Stats {
   upcomingJobs: any[]
 }
 
+function getGreeting(user: { email?: string | null; user_metadata?: Record<string, string> } | null) {
+  const hour = new Date().getHours()
+  const prefix = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches'
+
+  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name
+  if (fullName) return `${prefix}, ${fullName.split(' ')[0]}`
+
+  const email = user?.email || ''
+  const local = email.split('@')[0].replace(/[0-9]/g, '').split(/[._-]/)[0]
+  if (local) {
+    const name = local.charAt(0).toUpperCase() + local.slice(1)
+    return `${prefix}, ${name}`
+  }
+
+  return prefix
+}
+
 export default function DashboardPage() {
+  const { user } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -56,9 +77,26 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 page-transition">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Panel de control</h1>
-        <p className="text-sm text-muted-foreground capitalize">{monthName} {now.getFullYear()}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{getGreeting(user)}</h1>
+          <p className="text-sm text-muted-foreground capitalize">{monthName} {now.getFullYear()}</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button asChild className="flex-1 h-11">
+          <Link href="/trabajos/nuevo">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Nuevo trabajo
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="flex-1 h-11">
+          <Link href="/trabajos?status=pendiente">
+            <ListTodo className="h-4 w-4 mr-1.5" />
+            Pendientes
+          </Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

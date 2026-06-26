@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Phone, Mail, MapPin, FileText, Briefcase, Trash2, Edit } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, MapPin, FileText, Briefcase, Trash2, Edit, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -155,24 +155,47 @@ export default function ClienteDetailPage() {
             </div>
           </div>
 
+          {(client.phone || client.email) && (
+            <div className="flex gap-2 mb-4">
+              {client.phone && (
+                <Button asChild variant="outline" className="flex-1 h-10" size="sm">
+                  <a href={`tel:${client.phone}`}>
+                    <Phone className="h-4 w-4 mr-1.5" />
+                    Llamar
+                  </a>
+                </Button>
+              )}
+              {client.phone && (
+                <Button asChild variant="outline" className="flex-1 h-10 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950" size="sm">
+                  <a href={`https://wa.me/${client.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle className="h-4 w-4 mr-1.5" />
+                    WhatsApp
+                  </a>
+                </Button>
+              )}
+              {client.email && (
+                <Button asChild variant="outline" className="flex-1 h-10" size="sm">
+                  <a href={`mailto:${client.email}`}>
+                    <Mail className="h-4 w-4 mr-1.5" />
+                    Email
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2.5">
             {client.phone && (
-              <a
-                href={`tel:${client.phone}`}
-                className="flex items-center gap-3 text-sm hover:text-primary transition-colors"
-              >
-                <Phone className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <Phone className="h-4 w-4 flex-shrink-0" />
                 {client.phone}
-              </a>
+              </div>
             )}
             {client.email && (
-              <a
-                href={`mailto:${client.email}`}
-                className="flex items-center gap-3 text-sm hover:text-primary transition-colors"
-              >
-                <Mail className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <Mail className="h-4 w-4 flex-shrink-0" />
                 {client.email}
-              </a>
+              </div>
             )}
             {client.address && (
               <div className="flex items-center gap-3 text-sm">

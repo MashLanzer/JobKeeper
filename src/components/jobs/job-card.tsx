@@ -11,6 +11,28 @@ interface JobCardProps {
   job: Job
 }
 
+function PaymentBadge({ price, deposit }: { price: number; deposit: number }) {
+  if (price > 0 && deposit >= price) {
+    return (
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 whitespace-nowrap">
+        Pagado
+      </span>
+    )
+  }
+  if (deposit > 0) {
+    return (
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 whitespace-nowrap">
+        Anticipo
+      </span>
+    )
+  }
+  return (
+    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">
+      Sin cobrar
+    </span>
+  )
+}
+
 export function JobCard({ job }: JobCardProps) {
   return (
     <Link href={`/trabajos/${job.id}`}>
@@ -21,7 +43,10 @@ export function JobCard({ job }: JobCardProps) {
               <h3 className="font-semibold text-foreground truncate">{job.title}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{job.category}</p>
             </div>
-            <JobStatusBadge status={job.status} />
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <PaymentBadge price={job.price} deposit={job.deposit} />
+              <JobStatusBadge status={job.status} />
+            </div>
           </div>
 
           <div className="space-y-1.5">
