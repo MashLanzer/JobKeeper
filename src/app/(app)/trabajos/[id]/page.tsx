@@ -21,6 +21,10 @@ import { SignaturePad } from '@/components/jobs/signature-pad'
 import { createTemplate } from '@/services/templates'
 import { getPayments, addPayment, deletePayment, type Payment } from '@/services/payments'
 import { getPhotos, uploadPhoto, deletePhoto, type JobPhoto } from '@/services/photos'
+import { getJobMaterials, addJobMaterial, deleteJobMaterial, type JobMaterial } from '@/services/job-materials'
+import { getMaterials } from '@/services/materials'
+import { getExpenses } from '@/services/expenses'
+import type { Material } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -65,12 +69,82 @@ export default function JobDetailPage() {
   const [photos, setPhotos] = useState<JobPhoto[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
+  const [jobMaterials, setJobMaterials] = useState<JobMaterial[]>([])
+  const [inventory, setInventory] = useState<Material[]>([])
+  const [expensesTotal, setExpensesTotal] = useState(0)
+  const [matName, setMatName] = useState('')
+  const [matQty, setMatQty] = useState('1')
+  const [matPrice, setMatPrice] = useState('')
+  const [matLinkedId, setMatLinkedId] = useState<string | null>(null)
+  const [savingMat, setSavingMat] = useState(false)
+
   useEffect(() => {
     if (id) {
       getPayments(id).then(setPayments).catch(() => {})
       getPhotos(id).then(setPhotos).catch(() => {})
+      getJobMaterials(id).then(setJobMaterials).catch(() => {})
+      getExpenses({ job_id: id })
+        .then((exps) => setExpensesTotal(exps.reduce((s, e) => s + Number(e.amount), 0)))
+        .catch(() => {})
     }
   }, [id])
+
+  useEffect(() => {
+    getMaterials().then(setInventory).catch(() => {})
+  }, [])
+
+  const materialsCost = jobMaterials.reduce((s, m) => s + Number(m.quantity) * Number(m.unit_price), 0)
+  const jobProfit = (job ? Number(job.price) : 0) - materialsCost - expensesTotal
+
+  const handleAddMaterial = async () => {
+    const name = matName.trim()
+    const quantity = Number(matQty)
+    const unit_price = Number(matPrice)
+    if (!name) {
+      toast.error('Indica el material')
+      return
+    }
+    if (!quantity || quantity <= 0) {
+      toast.error('Cantidad inválida')
+      return
+    }
+    setSavingMat(true)
+    try {
+      const created = await addJobMaterial({ job_id: id, material_id: matLinkedId, name, quantity, unit_price })
+      setJobMaterials((prev) => [...prev, created])
+      setMatName('')
+      setMatQty('1')
+      setMatPrice('')
+      setMatLinkedId(null)
+      toast.success('Material agregado')
+    } catch {
+      toast.error('No se pudo agregar el material')
+    } finally {
+      setSavingMat(false)
+    }
+  }
+
+  const handleDeleteMaterial = async (mId: string) => {
+    try {
+      await deleteJobMaterial(mId)
+      setJobMaterials((prev) => prev.filter((m) => m.id !== mId))
+    } catch {
+      toast.error('No se pudo eliminar')
+    }
+  }
+
+  const pickInventory = (materialId: string) => {
+    if (materialId === 'none') {
+      setMatLinkedId(null)
+      return
+    }
+    const m = inventory.find((it) => it.id === materialId)
+    if (m) {
+      setMatLinkedId(m.id)
+      setMatName(m.name)
+      setMatPrice(String(Number(m.price)))
+    }
+  }
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1004,6 +1078,68 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Materials used */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Tag className="h-4 w-4 text-primary" />
+              Materiales usados
+            </h3>
+            {materialsCost > 0 && (
+              <span className="text-xs text-muted-foreground">{formatCurrency(materialsCost)}</span>
+            )}
+          </div>
+
+          {jobMaterials.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {jobMaterials.map((m) => (
+                <div key={m.id} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground truncate">
+                    {Number(m.quantity)} × {m.name}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-medium">{formatCurrency(Number(m.quantity) * Number(m.unit_price))}</span>
+                    <button
+                      onClick={() => handleDeleteMaterial(m.id)}
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label="Eliminar material"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2 rounded-lg border border-border p-3">
+            {inventory.length > 0 && (
+              <Select value={matLinkedId || 'none'} onValueChange={pickInventory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Del inventario (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Escribir manualmente</SelectItem>
+                  {inventory.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Input placeholder="Material" value={matName} onChange={(e) => setMatName(e.target.value)} />
+            <div className="grid grid-cols-2 gap-2">
+              <Input type="number" min="0" step="0.01" placeholder="Cantidad" value={matQty} onChange={(e) => setMatQty(e.target.value)} />
+              <Input type="number" min="0" step="0.01" placeholder="Precio unit." value={matPrice} onChange={(e) => setMatPrice(e.target.value)} />
+            </div>
+            <Button onClick={handleAddMaterial} size="sm" className="w-full" disabled={savingMat}>
+              <Plus className="h-4 w-4 mr-1" />
+              {savingMat ? 'Agregando...' : 'Agregar material'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Financial summary */}
       <Card>
         <CardContent className="p-4">
@@ -1054,6 +1190,30 @@ export default function JobDetailPage() {
                 {formatCurrency(pendingAmount)}
               </span>
             </div>
+
+            {(materialsCost > 0 || expensesTotal > 0) && (
+              <>
+                <Separator />
+                {materialsCost > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Materiales</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(materialsCost)}</span>
+                  </div>
+                )}
+                {expensesTotal > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Gastos del trabajo</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(expensesTotal)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground font-medium">Ganancia neta</span>
+                  <span className={`font-bold ${jobProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                    {formatCurrency(jobProfit)}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Add payment form */}
