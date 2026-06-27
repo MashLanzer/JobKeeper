@@ -138,13 +138,23 @@ export async function getTodayJobs(): Promise<Job[]> {
 
 export async function getPendingBalance() {
   const supabase = createClient()
-  const { data, error } = await supabase
+  const { data: jobs, error } = await supabase
     .from('jobs')
-    .select('price, deposit')
+    .select('id, price, deposit')
     .neq('status', 'cancelado')
   if (error) throw error
-  return (data || []).reduce((sum, job) => {
-    const pending = Number(job.price) - Number(job.deposit)
+
+  const ids = (jobs || []).map((j) => j.id)
+  const paymentsByJob: Record<string, number> = {}
+  if (ids.length) {
+    const { data: pays } = await supabase.from('payments').select('job_id, amount').in('job_id', ids)
+    for (const p of pays || []) {
+      paymentsByJob[p.job_id] = (paymentsByJob[p.job_id] || 0) + Number(p.amount)
+    }
+  }
+
+  return (jobs || []).reduce((sum, job) => {
+    const pending = Number(job.price) - Number(job.deposit) - (paymentsByJob[job.id] || 0)
     return sum + (pending > 0 ? pending : 0)
   }, 0)
 }

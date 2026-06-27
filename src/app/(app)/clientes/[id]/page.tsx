@@ -17,6 +17,7 @@ import { getClientWithJobs } from '@/services/clients'
 import { deleteClient, updateClient } from '@/services/clients'
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils'
 import { nextDueDate, maintenanceStatus, hasMaintenance } from '@/lib/maintenance'
+import { getPaymentsTotalForJobs } from '@/services/payments'
 import type { Client, Job } from '@/types'
 import {
   Dialog,
@@ -41,15 +42,21 @@ export default function ClienteDetailPage() {
   const [maintMonths, setMaintMonths] = useState('')
   const [maintLast, setMaintLast] = useState('')
   const [maintSaving, setMaintSaving] = useState(false)
+  const [paymentsTotal, setPaymentsTotal] = useState(0)
 
   useEffect(() => {
     const loadClient = async () => {
       try {
         const data = await getClientWithJobs(id)
         setClient(data.client)
-        setJobs(data.jobs as Job[])
+        const clientJobs = data.jobs as Job[]
+        setJobs(clientJobs)
         if (data.client?.maintenance_months) setMaintMonths(String(data.client.maintenance_months))
         if (data.client?.last_service_date) setMaintLast(data.client.last_service_date)
+
+        const ids = clientJobs.filter((j) => j.status !== 'cancelado').map((j) => j.id)
+        const totals = await getPaymentsTotalForJobs(ids)
+        setPaymentsTotal(Object.values(totals).reduce((s, v) => s + v, 0))
       } catch {
         toast.error('Error al cargar el cliente')
       } finally {
@@ -336,7 +343,7 @@ export default function ClienteDetailPage() {
       {jobs.length > 0 && (() => {
         const activeJobs = jobs.filter(j => j.status !== 'cancelado')
         const totalBilled = activeJobs.reduce((s, j) => s + Number(j.price), 0)
-        const totalCollected = activeJobs.reduce((s, j) => s + Number(j.deposit), 0)
+        const totalCollected = activeJobs.reduce((s, j) => s + Number(j.deposit), 0) + paymentsTotal
         const balance = totalBilled - totalCollected
         return (
           <Card>

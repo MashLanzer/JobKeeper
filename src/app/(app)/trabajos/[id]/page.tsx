@@ -12,13 +12,17 @@ import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useJob } from '@/hooks/use-jobs'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { getSettings, type BusinessSettings } from '@/services/settings'
 import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
 import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
 import { createTemplate } from '@/services/templates'
+import { getPayments, addPayment, deletePayment, type Payment } from '@/services/payments'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { PAYMENT_METHODS } from '@/types'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -33,6 +37,52 @@ export default function JobDetailPage() {
   const [settings, setSettings] = useState<BusinessSettings>({
     name: '', phone: '', email: '', logo: '', income_goal: 0,
   })
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [showPayForm, setShowPayForm] = useState(false)
+  const [payAmount, setPayAmount] = useState('')
+  const [payMethod, setPayMethod] = useState('efectivo')
+  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10))
+  const [savingPayment, setSavingPayment] = useState(false)
+
+  useEffect(() => {
+    if (id) getPayments(id).then(setPayments).catch(() => {})
+  }, [id])
+
+  const paymentsTotal = payments.reduce((s, p) => s + Number(p.amount), 0)
+  const collected = (job ? Number(job.deposit) : 0) + paymentsTotal
+  const pendingAmount = (job ? Number(job.price) : 0) - collected
+
+  const handleAddPayment = async () => {
+    const amount = Number(payAmount)
+    if (!amount || amount <= 0) {
+      toast.error('Ingresa un monto válido')
+      return
+    }
+    setSavingPayment(true)
+    try {
+      const created = await addPayment({ job_id: id, amount, method: payMethod, paid_at: payDate })
+      setPayments((prev) => [created, ...prev])
+      setPayAmount('')
+      setShowPayForm(false)
+      if (job && collected + amount >= Number(job.price)) {
+        await update({ paid_at: new Date().toISOString() })
+      }
+      toast.success('Pago registrado')
+    } catch {
+      toast.error('No se pudo registrar el pago')
+    } finally {
+      setSavingPayment(false)
+    }
+  }
+
+  const handleDeletePayment = async (paymentId: string) => {
+    try {
+      await deletePayment(paymentId)
+      setPayments((prev) => prev.filter((p) => p.id !== paymentId))
+    } catch {
+      toast.error('No se pudo eliminar el pago')
+    }
+  }
 
   // Sincroniza checklist y firma cuando el trabajo carga/cambia.
   useEffect(() => {
@@ -456,10 +506,16 @@ export default function JobDetailPage() {
   }
 
   const handleMarkPaid = async () => {
-    if (!job) return
+    if (!job || pendingAmount <= 0) return
     setUpdatingStatus(true)
     try {
-      await update({ deposit: job.price })
+      const created = await addPayment({
+        job_id: id,
+        amount: pendingAmount,
+        method: job.payment_method || 'efectivo',
+      })
+      setPayments((prev) => [created, ...prev])
+      await update({ paid_at: new Date().toISOString() })
       toast.success('Trabajo marcado como cobrado')
     } catch {
       toast.error('Error al actualizar el cobro')
@@ -517,8 +573,6 @@ export default function JobDetailPage() {
       </div>
     )
   }
-
-  const pending = job.price - job.deposit
 
   return (
     <div className="space-y-6 page-transition">
@@ -779,31 +833,94 @@ export default function JobDetailPage() {
               <span className="font-semibold text-green-500">{formatCurrency(job.price)}</span>
             </div>
             {job.deposit > 0 && (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Anticipo recibido</span>
-                  <span className="font-medium">{formatCurrency(job.deposit)}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pendiente por cobrar</span>
-                  <span className={`font-semibold ${pending > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
-                    {formatCurrency(pending)}
-                  </span>
-                </div>
-              </>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Anticipo inicial</span>
+                <span className="font-medium">{formatCurrency(job.deposit)}</span>
+              </div>
             )}
+
+            {/* Pagos registrados */}
+            {payments.map((p) => (
+              <div key={p.id} className="flex justify-between items-center text-sm group">
+                <span className="text-muted-foreground">
+                  Pago · {formatDate(p.paid_at)}
+                  {p.method ? <span className="capitalize"> · {p.method}</span> : null}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="font-medium">{formatCurrency(Number(p.amount))}</span>
+                  <button
+                    onClick={() => handleDeletePayment(p.id)}
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Eliminar pago"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              </div>
+            ))}
+
+            <Separator />
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Total cobrado</span>
+              <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(collected)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Pendiente por cobrar</span>
+              <span className={`font-semibold ${pendingAmount > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
+                {formatCurrency(pendingAmount)}
+              </span>
+            </div>
           </div>
 
-          {pending > 0 && (
-            <Button
-              className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white"
-              onClick={handleMarkPaid}
-              disabled={updatingStatus}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Marcar como cobrado ({formatCurrency(pending)})
-            </Button>
+          {/* Add payment form */}
+          {showPayForm ? (
+            <div className="mt-4 space-y-2 rounded-lg border border-border p-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Monto"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                />
+                <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+              </div>
+              <Select value={payMethod} onValueChange={setPayMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Button onClick={handleAddPayment} size="sm" className="flex-1" disabled={savingPayment}>
+                  {savingPayment ? 'Guardando...' : 'Registrar pago'}
+                </Button>
+                <Button onClick={() => setShowPayForm(false)} size="sm" variant="ghost">
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            pendingAmount > 0 && (
+              <div className="flex gap-2 mt-4">
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleMarkPaid}
+                  disabled={updatingStatus}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Cobrar todo ({formatCurrency(pendingAmount)})
+                </Button>
+                <Button variant="outline" onClick={() => { setPayAmount(String(pendingAmount)); setShowPayForm(true) }}>
+                  Pago parcial
+                </Button>
+              </div>
+            )
           )}
         </CardContent>
       </Card>
