@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2 } from 'lucide-react'
+import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,11 @@ import { useAuth } from '@/hooks/use-auth'
 import { useTheme } from '@/components/providers/theme-provider'
 import { getInitials, formatCurrency } from '@/lib/utils'
 import { getSettings, upsertSettings, type BusinessSettings } from '@/services/settings'
+import { getJobs } from '@/services/jobs'
+import { getClients } from '@/services/clients'
+import { getExpenses } from '@/services/expenses'
+import { getMaterials } from '@/services/materials'
+import { getTemplates } from '@/services/templates'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
@@ -110,6 +115,35 @@ export default function ConfiguracionPage() {
       toast.success(val === 0 ? 'Meta eliminada' : 'Meta guardada')
     } catch {
       toast.error('Error al guardar la meta')
+    }
+  }
+
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportBackup = async () => {
+    setExporting(true)
+    try {
+      const [jobs, clients, expenses, materials, templates, settings] = await Promise.all([
+        getJobs(),
+        getClients(),
+        getExpenses(),
+        getMaterials(),
+        getTemplates(),
+        getSettings(),
+      ])
+      const backup = { exportedAt: new Date().toISOString(), settings, clients, jobs, expenses, materials, templates }
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `workledger-respaldo-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Respaldo descargado')
+    } catch {
+      toast.error('Error al generar el respaldo')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -328,6 +362,16 @@ export default function ConfiguracionPage() {
             <span className="text-muted-foreground">Versión</span>
             <span className="font-medium">1.0.0</span>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-2"
+            onClick={handleExportBackup}
+            disabled={exporting}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {exporting ? 'Generando...' : 'Exportar respaldo (JSON)'}
+          </Button>
         </CardContent>
       </Card>
 

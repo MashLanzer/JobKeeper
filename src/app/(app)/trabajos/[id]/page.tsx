@@ -25,6 +25,22 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PAYMENT_METHODS } from '@/types'
 
+// Descarga una imagen remota y la convierte a data URL para incrustarla en el PDF.
+async function urlToDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    return await new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
 export default function JobDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -340,6 +356,34 @@ export default function JobDetailPage() {
       const genDate = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })
       doc.text(`Generado el ${genDate}`, margin, pageH - 10)
       doc.text(businessName, pageW - margin, pageH - 10, { align: 'right' })
+
+      // Fotos del trabajo (en página aparte para no desordenar el recibo)
+      const photoList = photos.filter((p) => p.url).slice(0, 4)
+      if (photoList.length) {
+        doc.addPage()
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(13)
+        doc.setTextColor(79, 70, 229)
+        doc.text('Fotos del trabajo', margin, 22)
+        let py = 30
+        let px = margin
+        for (const ph of photoList) {
+          const dataUrl = await urlToDataUrl(ph.url as string)
+          if (!dataUrl) continue
+          const fmt = dataUrl.substring(dataUrl.indexOf('/') + 1, dataUrl.indexOf(';')).toUpperCase()
+          try {
+            doc.addImage(dataUrl, fmt, px, py, 85, 64)
+          } catch {
+            continue
+          }
+          if (px === margin) {
+            px = margin + 90
+          } else {
+            px = margin
+            py += 70
+          }
+        }
+      }
 
       const safeTitle = job.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
       const result = await sharePdf(doc, `recibo-${safeTitle}.pdf`, `Recibo - ${job.title}`)
