@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,7 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { JOB_CATEGORIES, JOB_STATUSES, PAYMENT_METHODS } from '@/types'
-import type { Job, Client } from '@/types'
+import type { Job, Client, Equipment } from '@/types'
+import { getEquipmentForClient } from '@/services/equipment'
 import { Loader2 } from 'lucide-react'
 
 const jobSchema = z.object({
@@ -18,6 +20,7 @@ const jobSchema = z.object({
   address: z.string().optional(),
   category: z.string().min(1, 'La categoría es requerida'),
   client_id: z.string().optional(),
+  equipment_id: z.string().optional(),
   scheduled_at: z.string().optional(),
   price: z.number({ invalid_type_error: 'Precio inválido' }).min(0, 'El precio no puede ser negativo'),
   deposit: z.number({ invalid_type_error: 'Anticipo inválido' }).min(0, 'El anticipo no puede ser negativo'),
@@ -51,6 +54,7 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
       address: initialData?.address || '',
       category: initialData?.category || 'General/Varios',
       client_id: initialData?.client_id || undefined,
+      equipment_id: initialData?.equipment_id || undefined,
       scheduled_at: initialData?.scheduled_at
         ? new Date(initialData.scheduled_at).toISOString().slice(0, 16)
         : '',
@@ -62,8 +66,24 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
     },
   })
 
+  const selectedClient = watch('client_id')
+  const [equipment, setEquipment] = useState<Equipment[]>([])
+
+  useEffect(() => {
+    if (selectedClient) {
+      getEquipmentForClient(selectedClient).then(setEquipment).catch(() => setEquipment([]))
+    } else {
+      setEquipment([])
+    }
+  }, [selectedClient])
+
+  const submit = handleSubmit((data) => {
+    if (!data.equipment_id) delete data.equipment_id
+    return onSubmit(data)
+  })
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="title">Título *</Label>
         <Input
@@ -113,6 +133,28 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
           </SelectContent>
         </Select>
       </div>
+
+      {equipment.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="equipment_id">Equipo</Label>
+          <Select
+            defaultValue={initialData?.equipment_id || 'none'}
+            onValueChange={(v) => setValue('equipment_id', v === 'none' ? undefined : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sin equipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sin equipo</SelectItem>
+              {equipment.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.label}{e.brand ? ` · ${e.brand}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="description">Descripción</Label>

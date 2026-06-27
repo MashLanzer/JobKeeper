@@ -28,6 +28,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ClientForm } from '@/components/clients/client-form'
+import { EquipmentSection } from '@/components/clients/equipment-section'
 
 export default function ClienteDetailPage() {
   const params = useParams()
@@ -419,6 +420,9 @@ export default function ClienteDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Equipment */}
+      <EquipmentSection clientId={id} />
 
       {/* Financial balance */}
       {jobs.length > 0 && (() => {
