@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useJob } from '@/hooks/use-jobs'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import { getBusinessInfo } from '@/lib/business'
+import { getSettings, type BusinessSettings } from '@/services/settings'
 import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
 import { getChecklist, saveChecklist, type ChecklistItem } from '@/lib/checklist'
@@ -31,6 +31,9 @@ export default function JobDetailPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [signature, setSignature] = useState<string | null>(null)
+  const [settings, setSettings] = useState<BusinessSettings>({
+    name: '', phone: '', email: '', logo: '', income_goal: 0,
+  })
 
   useEffect(() => {
     if (id) {
@@ -38,6 +41,10 @@ export default function JobDetailPage() {
       setSignature(getSignature(id))
     }
   }, [id])
+
+  useEffect(() => {
+    getSettings().then(setSettings).catch(() => {})
+  }, [])
 
   const toggleChecklistItem = (index: number) => {
     setChecklist((prev) => {
@@ -51,7 +58,7 @@ export default function JobDetailPage() {
     if (!job) return
     setGeneratingPdf(true)
     try {
-      const business = getBusinessInfo()
+      const business = settings
       const businessName = business.name.trim() || 'WorkLedger'
       const contact = [business.phone, business.email].filter(Boolean).join('   ·   ')
 
@@ -290,7 +297,7 @@ export default function JobDetailPage() {
     if (!job) return
     setGeneratingQuote(true)
     try {
-      const business = getBusinessInfo()
+      const business = settings
       const businessName = business.name.trim() || 'WorkLedger'
       const contact = [business.phone, business.email].filter(Boolean).join('   ·   ')
 

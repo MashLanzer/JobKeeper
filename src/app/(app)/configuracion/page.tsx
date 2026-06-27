@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth'
 import { useTheme } from '@/components/providers/theme-provider'
 import { getInitials, formatCurrency } from '@/lib/utils'
-import { getBusinessInfo, saveBusinessInfo, type BusinessInfo } from '@/lib/business'
+import { getSettings, upsertSettings, type BusinessSettings } from '@/services/settings'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
@@ -21,30 +21,63 @@ export default function ConfiguracionPage() {
   const router = useRouter()
   const [goalInput, setGoalInput] = useState('')
   const [savedGoal, setSavedGoal] = useState(0)
-  const [business, setBusiness] = useState<BusinessInfo>({ name: '', phone: '', email: '' })
-
-  const goalKey = `income_goal_${user?.id || 'default'}`
+  const [business, setBusiness] = useState<BusinessSettings>({
+    name: '', phone: '', email: '', logo: '', income_goal: 0,
+  })
+  const [savingBusiness, setSavingBusiness] = useState(false)
 
   useEffect(() => {
-    const val = localStorage.getItem(goalKey)
-    if (val) {
-      setSavedGoal(Number(val))
-      setGoalInput(val)
+    const load = async () => {
+      let settings = await getSettings()
+
+      // Migración única desde localStorage (versiones anteriores).
+      const isEmpty =
+        !settings.name && !settings.phone && !settings.email && !settings.logo && !settings.income_goal
+      if (isEmpty && user?.id) {
+        const legacyBiz = localStorage.getItem('business_info')
+        const legacyGoal = localStorage.getItem(`income_goal_${user.id}`)
+        if (legacyBiz || legacyGoal) {
+          const biz = legacyBiz ? JSON.parse(legacyBiz) : {}
+          const migrated: BusinessSettings = {
+            name: biz.name || '',
+            phone: biz.phone || '',
+            email: biz.email || '',
+            logo: biz.logo || '',
+            income_goal: legacyGoal ? Number(legacyGoal) : 0,
+          }
+          try {
+            await upsertSettings(migrated)
+            settings = migrated
+          } catch {
+            // si falla, seguimos con lo que haya
+          }
+        }
+      }
+
+      setBusiness(settings)
+      if (settings.income_goal > 0) {
+        setSavedGoal(settings.income_goal)
+        setGoalInput(String(settings.income_goal))
+      }
     }
-  }, [goalKey])
+    load()
+  }, [user?.id])
 
-  useEffect(() => {
-    setBusiness(getBusinessInfo())
-  }, [])
-
-  const handleSaveBusiness = () => {
-    saveBusinessInfo({
-      name: business.name.trim(),
-      phone: business.phone.trim(),
-      email: business.email.trim(),
-      logo: business.logo || '',
-    })
-    toast.success('Datos del negocio guardados')
+  const handleSaveBusiness = async () => {
+    setSavingBusiness(true)
+    try {
+      await upsertSettings({
+        name: business.name.trim(),
+        phone: business.phone.trim(),
+        email: business.email.trim(),
+        logo: business.logo || '',
+      })
+      toast.success('Datos del negocio guardados')
+    } catch {
+      toast.error('Error al guardar los datos del negocio')
+    } finally {
+      setSavingBusiness(false)
+    }
   }
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,20 +98,19 @@ export default function ConfiguracionPage() {
     reader.readAsDataURL(file)
   }
 
-  const handleSaveGoal = () => {
+  const handleSaveGoal = async () => {
     const val = Number(goalInput)
     if (isNaN(val) || val < 0) {
       toast.error('Ingresa un monto válido')
       return
     }
-    if (val === 0) {
-      localStorage.removeItem(goalKey)
-      setSavedGoal(0)
-    } else {
-      localStorage.setItem(goalKey, String(val))
+    try {
+      await upsertSettings({ income_goal: val })
       setSavedGoal(val)
+      toast.success(val === 0 ? 'Meta eliminada' : 'Meta guardada')
+    } catch {
+      toast.error('Error al guardar la meta')
     }
-    toast.success(val === 0 ? 'Meta eliminada' : 'Meta guardada')
   }
 
   const handleSignOut = async () => {
@@ -207,8 +239,8 @@ export default function ConfiguracionPage() {
               onChange={(e) => setBusiness((b) => ({ ...b, email: e.target.value }))}
             />
           </div>
-          <Button onClick={handleSaveBusiness} size="sm" className="w-full">
-            Guardar datos del negocio
+          <Button onClick={handleSaveBusiness} size="sm" className="w-full" disabled={savingBusiness}>
+            {savingBusiness ? 'Guardando...' : 'Guardar datos del negocio'}
           </Button>
         </CardContent>
       </Card>

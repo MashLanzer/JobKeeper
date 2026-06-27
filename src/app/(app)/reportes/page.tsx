@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Download, FileText, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,8 @@ import { PageHeader } from '@/components/shared/page-header'
 import { getJobsByMonth } from '@/services/jobs'
 import { getExpensesByMonth, getFinanceSummary } from '@/services/expenses'
 import { getYearReport } from '@/services/reports'
+import { getSettings, businessNameOf } from '@/services/settings'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { getBusinessName } from '@/lib/business'
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -22,6 +22,11 @@ export default function ReportesPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [loading, setLoading] = useState(false)
+  const [businessName, setBusinessName] = useState('WorkLedger')
+
+  useEffect(() => {
+    getSettings().then((s) => setBusinessName(businessNameOf(s))).catch(() => {})
+  }, [])
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -202,7 +207,6 @@ export default function ReportesPage() {
         getJobsByMonth(year, month),
       ])
 
-      const businessName = getBusinessName()
       const { default: jsPDF } = await import('jspdf')
       const doc = new jsPDF()
       const pageW = doc.internal.pageSize.getWidth()
@@ -280,7 +284,6 @@ export default function ReportesPage() {
       setLoading(true)
       const report = await getYearReport(year)
 
-      const businessName = getBusinessName()
       const { default: jsPDF } = await import('jspdf')
       const { default: autoTable } = await import('jspdf-autotable')
       const doc = new jsPDF()

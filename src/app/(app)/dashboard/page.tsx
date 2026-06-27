@@ -11,6 +11,7 @@ import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
 import { getDashboardStats, getPendingBalance, getTodayJobs } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
+import { getSettings } from '@/services/settings'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   getAllMaintenance,
@@ -64,10 +65,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    const goalKey = `income_goal_${user?.id || 'default'}`
-    const saved = localStorage.getItem(goalKey)
-    if (saved) setIncomeGoal(Number(saved))
-  }, [user?.id])
+    getSettings()
+      .then((s) => setIncomeGoal(s.income_goal))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const loadStats = async () => {
