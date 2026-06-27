@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Phone, Mail, MapPin, FileText, Briefcase, Trash2, Edit, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, MapPin, FileText, Briefcase, Trash2, Edit, MessageCircle, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { JobCard } from '@/components/jobs/job-card'
@@ -13,7 +15,14 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getClientWithJobs } from '@/services/clients'
 import { deleteClient, updateClient } from '@/services/clients'
-import { getInitials, formatCurrency } from '@/lib/utils'
+import { getInitials, formatCurrency, formatDate } from '@/lib/utils'
+import {
+  getMaintenance,
+  saveMaintenance,
+  removeMaintenance,
+  nextDueDate,
+  maintenanceStatus,
+} from '@/lib/maintenance'
 import type { Client, Job } from '@/types'
 import {
   Dialog,
@@ -35,6 +44,19 @@ export default function ClienteDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
 
+  const [maintMonths, setMaintMonths] = useState('')
+  const [maintLast, setMaintLast] = useState('')
+  const [maintSaved, setMaintSaved] = useState(() => getMaintenance(id))
+
+  useEffect(() => {
+    const rec = getMaintenance(id)
+    setMaintSaved(rec)
+    if (rec) {
+      setMaintMonths(String(rec.months))
+      setMaintLast(rec.lastService)
+    }
+  }, [id])
+
   useEffect(() => {
     const loadClient = async () => {
       try {
@@ -50,6 +72,35 @@ export default function ClienteDetailPage() {
 
     loadClient()
   }, [id])
+
+  const handleSaveMaintenance = () => {
+    const months = Number(maintMonths)
+    if (!months || months < 1) {
+      toast.error('Indica cada cuántos meses (mínimo 1)')
+      return
+    }
+    if (!maintLast) {
+      toast.error('Indica la fecha del último servicio')
+      return
+    }
+    const rec = {
+      clientId: id,
+      clientName: client?.name || '',
+      months,
+      lastService: maintLast,
+    }
+    saveMaintenance(rec)
+    setMaintSaved(rec)
+    toast.success('Plan de mantenimiento guardado')
+  }
+
+  const handleRemoveMaintenance = () => {
+    removeMaintenance(id)
+    setMaintSaved(null)
+    setMaintMonths('')
+    setMaintLast('')
+    toast.success('Plan de mantenimiento eliminado')
+  }
 
   const handleDelete = async () => {
     try {
@@ -208,6 +259,71 @@ export default function ClienteDetailPage() {
                 <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <span className="text-muted-foreground">{client.notes}</span>
               </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Maintenance plan */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Wrench className="h-4 w-4" />
+            Plan de mantenimiento
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {maintSaved && (() => {
+            const due = nextDueDate(maintSaved)
+            const status = maintenanceStatus(maintSaved)
+            const styles = {
+              due: 'bg-destructive/10 text-destructive',
+              soon: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+              ok: 'bg-green-500/10 text-green-600 dark:text-green-400',
+            }[status]
+            const label = { due: 'Vencido', soon: 'Próximo', ok: 'Al día' }[status]
+            return (
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Próximo servicio</p>
+                  <p className="text-sm font-semibold">{formatDate(due.toISOString())}</p>
+                  <p className="text-xs text-muted-foreground">cada {maintSaved.months} meses</p>
+                </div>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${styles}`}>{label}</span>
+              </div>
+            )
+          })()}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="maintMonths" className="text-xs">Cada (meses)</Label>
+              <Input
+                id="maintMonths"
+                type="number"
+                min="1"
+                placeholder="Ej: 6"
+                value={maintMonths}
+                onChange={(e) => setMaintMonths(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="maintLast" className="text-xs">Último servicio</Label>
+              <Input
+                id="maintLast"
+                type="date"
+                value={maintLast}
+                onChange={(e) => setMaintLast(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSaveMaintenance} size="sm" className="flex-1">
+              {maintSaved ? 'Actualizar plan' : 'Guardar plan'}
+            </Button>
+            {maintSaved && (
+              <Button onClick={handleRemoveMaintenance} size="sm" variant="ghost" className="text-destructive">
+                Quitar
+              </Button>
             )}
           </div>
         </CardContent>

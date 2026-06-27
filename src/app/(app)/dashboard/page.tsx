@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays } from 'lucide-react'
+import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatCard } from '@/components/dashboard/stat-card'
@@ -11,7 +11,13 @@ import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
 import { getDashboardStats, getPendingBalance, getTodayJobs } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import {
+  getAllMaintenance,
+  nextDueDate,
+  maintenanceStatus,
+  type MaintenanceRecord,
+} from '@/lib/maintenance'
 import { useAuth } from '@/hooks/use-auth'
 import type { Job } from '@/types'
 
@@ -48,6 +54,14 @@ export default function DashboardPage() {
   const [todayJobs, setTodayJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [incomeGoal, setIncomeGoal] = useState(0)
+  const [dueMaintenance, setDueMaintenance] = useState<MaintenanceRecord[]>([])
+
+  useEffect(() => {
+    const all = getAllMaintenance()
+      .filter((r) => maintenanceStatus(r) !== 'ok')
+      .sort((a, b) => nextDueDate(a).getTime() - nextDueDate(b).getTime())
+    setDueMaintenance(all)
+  }, [])
 
   useEffect(() => {
     const goalKey = `income_goal_${user?.id || 'default'}`
@@ -131,6 +145,45 @@ export default function DashboardPage() {
             </p>
           </div>
         </Link>
+      )}
+
+      {/* Maintenance due */}
+      {dueMaintenance.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-amber-500" />
+            Mantenimientos ({dueMaintenance.length})
+          </h2>
+          <div className="space-y-3">
+            {dueMaintenance.map((rec) => {
+              const overdue = maintenanceStatus(rec) === 'due'
+              return (
+                <Link key={rec.clientId} href={`/clientes/${rec.clientId}`}>
+                  <Card className={overdue ? 'border-destructive/40' : 'border-amber-500/30'}>
+                    <CardContent className="p-3 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{rec.clientName || 'Cliente'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {overdue ? 'Vencido — ' : 'Próximo — '}
+                          {formatDate(nextDueDate(rec).toISOString())}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          overdue
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                        }`}
+                      >
+                        {overdue ? 'Vencido' : 'Próximo'}
+                      </span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {/* Today's agenda */}
