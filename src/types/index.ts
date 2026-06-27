@@ -9,6 +9,8 @@ export interface Client {
   email?: string
   address?: string
   notes?: string
+  maintenance_months?: number | null
+  last_service_date?: string | null
   created_at: string
   updated_at: string
 }

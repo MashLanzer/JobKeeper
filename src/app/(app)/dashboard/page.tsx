@@ -13,14 +13,10 @@ import { getDashboardStats, getPendingBalance, getTodayJobs } from '@/services/j
 import { getFinanceSummary } from '@/services/expenses'
 import { getSettings } from '@/services/settings'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import {
-  getAllMaintenance,
-  nextDueDate,
-  maintenanceStatus,
-  type MaintenanceRecord,
-} from '@/lib/maintenance'
+import { nextDueDate, maintenanceStatus, hasMaintenance } from '@/lib/maintenance'
+import { getClients } from '@/services/clients'
 import { useAuth } from '@/hooks/use-auth'
-import type { Job } from '@/types'
+import type { Job, Client } from '@/types'
 
 interface Stats {
   completedThisMonth: number
@@ -55,13 +51,25 @@ export default function DashboardPage() {
   const [todayJobs, setTodayJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [incomeGoal, setIncomeGoal] = useState(0)
-  const [dueMaintenance, setDueMaintenance] = useState<MaintenanceRecord[]>([])
+  const [dueMaintenance, setDueMaintenance] = useState<Client[]>([])
 
   useEffect(() => {
-    const all = getAllMaintenance()
-      .filter((r) => maintenanceStatus(r) !== 'ok')
-      .sort((a, b) => nextDueDate(a).getTime() - nextDueDate(b).getTime())
-    setDueMaintenance(all)
+    getClients()
+      .then((clients) => {
+        const due = clients
+          .filter(
+            (c) =>
+              hasMaintenance(c) &&
+              maintenanceStatus(c.last_service_date as string, c.maintenance_months as number) !== 'ok'
+          )
+          .sort(
+            (a, b) =>
+              nextDueDate(a.last_service_date as string, a.maintenance_months as number).getTime() -
+              nextDueDate(b.last_service_date as string, b.maintenance_months as number).getTime()
+          )
+        setDueMaintenance(due)
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -156,17 +164,19 @@ export default function DashboardPage() {
             Mantenimientos ({dueMaintenance.length})
           </h2>
           <div className="space-y-3">
-            {dueMaintenance.map((rec) => {
-              const overdue = maintenanceStatus(rec) === 'due'
+            {dueMaintenance.map((c) => {
+              const last = c.last_service_date as string
+              const months = c.maintenance_months as number
+              const overdue = maintenanceStatus(last, months) === 'due'
               return (
-                <Link key={rec.clientId} href={`/clientes/${rec.clientId}`}>
+                <Link key={c.id} href={`/clientes/${c.id}`}>
                   <Card className={overdue ? 'border-destructive/40' : 'border-amber-500/30'}>
                     <CardContent className="p-3 flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{rec.clientName || 'Cliente'}</p>
+                        <p className="text-sm font-medium truncate">{c.name || 'Cliente'}</p>
                         <p className="text-xs text-muted-foreground">
                           {overdue ? 'Vencido — ' : 'Próximo — '}
-                          {formatDate(nextDueDate(rec).toISOString())}
+                          {formatDate(nextDueDate(last, months).toISOString())}
                         </p>
                       </div>
                       <span

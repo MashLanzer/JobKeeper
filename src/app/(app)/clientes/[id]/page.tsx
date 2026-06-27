@@ -16,13 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getClientWithJobs } from '@/services/clients'
 import { deleteClient, updateClient } from '@/services/clients'
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils'
-import {
-  getMaintenance,
-  saveMaintenance,
-  removeMaintenance,
-  nextDueDate,
-  maintenanceStatus,
-} from '@/lib/maintenance'
+import { nextDueDate, maintenanceStatus, hasMaintenance } from '@/lib/maintenance'
 import type { Client, Job } from '@/types'
 import {
   Dialog,
@@ -46,16 +40,7 @@ export default function ClienteDetailPage() {
 
   const [maintMonths, setMaintMonths] = useState('')
   const [maintLast, setMaintLast] = useState('')
-  const [maintSaved, setMaintSaved] = useState(() => getMaintenance(id))
-
-  useEffect(() => {
-    const rec = getMaintenance(id)
-    setMaintSaved(rec)
-    if (rec) {
-      setMaintMonths(String(rec.months))
-      setMaintLast(rec.lastService)
-    }
-  }, [id])
+  const [maintSaving, setMaintSaving] = useState(false)
 
   useEffect(() => {
     const loadClient = async () => {
@@ -63,6 +48,8 @@ export default function ClienteDetailPage() {
         const data = await getClientWithJobs(id)
         setClient(data.client)
         setJobs(data.jobs as Job[])
+        if (data.client?.maintenance_months) setMaintMonths(String(data.client.maintenance_months))
+        if (data.client?.last_service_date) setMaintLast(data.client.last_service_date)
       } catch {
         toast.error('Error al cargar el cliente')
       } finally {
@@ -73,7 +60,7 @@ export default function ClienteDetailPage() {
     loadClient()
   }, [id])
 
-  const handleSaveMaintenance = () => {
+  const handleSaveMaintenance = async () => {
     const months = Number(maintMonths)
     if (!months || months < 1) {
       toast.error('Indica cada cuántos meses (mínimo 1)')
@@ -83,23 +70,37 @@ export default function ClienteDetailPage() {
       toast.error('Indica la fecha del último servicio')
       return
     }
-    const rec = {
-      clientId: id,
-      clientName: client?.name || '',
-      months,
-      lastService: maintLast,
+    setMaintSaving(true)
+    try {
+      const updated = await updateClient(id, {
+        maintenance_months: months,
+        last_service_date: maintLast,
+      })
+      setClient(updated)
+      toast.success('Plan de mantenimiento guardado')
+    } catch {
+      toast.error('Error al guardar el plan')
+    } finally {
+      setMaintSaving(false)
     }
-    saveMaintenance(rec)
-    setMaintSaved(rec)
-    toast.success('Plan de mantenimiento guardado')
   }
 
-  const handleRemoveMaintenance = () => {
-    removeMaintenance(id)
-    setMaintSaved(null)
-    setMaintMonths('')
-    setMaintLast('')
-    toast.success('Plan de mantenimiento eliminado')
+  const handleRemoveMaintenance = async () => {
+    setMaintSaving(true)
+    try {
+      const updated = await updateClient(id, {
+        maintenance_months: null,
+        last_service_date: null,
+      })
+      setClient(updated)
+      setMaintMonths('')
+      setMaintLast('')
+      toast.success('Plan de mantenimiento eliminado')
+    } catch {
+      toast.error('Error al eliminar el plan')
+    } finally {
+      setMaintSaving(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -273,9 +274,11 @@ export default function ClienteDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {maintSaved && (() => {
-            const due = nextDueDate(maintSaved)
-            const status = maintenanceStatus(maintSaved)
+          {client && hasMaintenance(client) && (() => {
+            const months = client.maintenance_months as number
+            const last = client.last_service_date as string
+            const due = nextDueDate(last, months)
+            const status = maintenanceStatus(last, months)
             const styles = {
               due: 'bg-destructive/10 text-destructive',
               soon: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
@@ -287,7 +290,7 @@ export default function ClienteDetailPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">Próximo servicio</p>
                   <p className="text-sm font-semibold">{formatDate(due.toISOString())}</p>
-                  <p className="text-xs text-muted-foreground">cada {maintSaved.months} meses</p>
+                  <p className="text-xs text-muted-foreground">cada {months} meses</p>
                 </div>
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${styles}`}>{label}</span>
               </div>
@@ -317,11 +320,11 @@ export default function ClienteDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleSaveMaintenance} size="sm" className="flex-1">
-              {maintSaved ? 'Actualizar plan' : 'Guardar plan'}
+            <Button onClick={handleSaveMaintenance} size="sm" className="flex-1" disabled={maintSaving}>
+              {client && hasMaintenance(client) ? 'Actualizar plan' : 'Guardar plan'}
             </Button>
-            {maintSaved && (
-              <Button onClick={handleRemoveMaintenance} size="sm" variant="ghost" className="text-destructive">
+            {client && hasMaintenance(client) && (
+              <Button onClick={handleRemoveMaintenance} size="sm" variant="ghost" className="text-destructive" disabled={maintSaving}>
                 Quitar
               </Button>
             )}
