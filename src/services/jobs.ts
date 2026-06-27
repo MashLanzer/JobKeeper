@@ -154,6 +154,21 @@ export async function getTomorrowJobs(): Promise<Job[]> {
   return data as Job[]
 }
 
+export async function getFollowupsDue(): Promise<Job[]> {
+  const supabase = createClient()
+  const today = new Date().toISOString().slice(0, 10)
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*, client:clients(id, name)')
+    .not('followup_at', 'is', null)
+    .lte('followup_at', today)
+    .or('followup_done.is.null,followup_done.eq.false')
+    .order('followup_at', { ascending: true })
+
+  if (error) throw error
+  return data as Job[]
+}
+
 export async function getPendingBalance() {
   const supabase = createClient()
   const { data: jobs, error } = await supabase

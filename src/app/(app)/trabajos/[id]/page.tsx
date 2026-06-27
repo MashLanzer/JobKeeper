@@ -22,6 +22,7 @@ import { createTemplate } from '@/services/templates'
 import { getPayments, addPayment, deletePayment, type Payment } from '@/services/payments'
 import { getPhotos, uploadPhoto, deletePhoto, type JobPhoto } from '@/services/photos'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PAYMENT_METHODS } from '@/types'
 
@@ -140,13 +141,36 @@ export default function JobDetailPage() {
     }
   }
 
-  // Sincroniza checklist y firma cuando el trabajo carga/cambia.
+  const [warrantyUntil, setWarrantyUntil] = useState('')
+  const [followupAt, setFollowupAt] = useState('')
+
+  // Sincroniza checklist, firma, garantía y seguimiento cuando el trabajo carga/cambia.
   useEffect(() => {
     if (job) {
       setChecklist(buildChecklist(job.checklist))
       setSignature(job.signature ?? null)
+      setWarrantyUntil(job.warranty_until ?? '')
+      setFollowupAt(job.followup_at ?? '')
     }
   }, [job])
+
+  const saveWarranty = async (v: string) => {
+    setWarrantyUntil(v)
+    try {
+      await update({ warranty_until: v || null })
+    } catch {
+      toast.error('No se pudo guardar la garantía')
+    }
+  }
+
+  const saveFollowup = async (v: string) => {
+    setFollowupAt(v)
+    try {
+      await update({ followup_at: v || null, followup_done: false })
+    } catch {
+      toast.error('No se pudo guardar el seguimiento')
+    }
+  }
 
   useEffect(() => {
     getSettings().then(setSettings).catch(() => {})
@@ -837,6 +861,33 @@ export default function JobDetailPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Warranty & follow-up */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            Garantía y seguimiento
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Garantía hasta</Label>
+                {warrantyUntil && new Date(warrantyUntil) >= new Date(new Date().toDateString()) && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+                    En garantía
+                  </span>
+                )}
+              </div>
+              <Input type="date" value={warrantyUntil} onChange={(e) => saveWarranty(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Seguimiento</Label>
+              <Input type="date" value={followupAt} onChange={(e) => saveFollowup(e.target.value)} />
+            </div>
           </div>
         </CardContent>
       </Card>

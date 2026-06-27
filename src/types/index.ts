@@ -34,6 +34,13 @@ export interface Job {
   checklist?: ChecklistItem[] | null
   signature?: string | null
   paid_at?: string | null
+  warranty_until?: string | null
+  followup_at?: string | null
+  followup_done?: boolean | null
+  line_items?: LineItem[] | null
+  discount?: number | null
+  tax_rate?: number | null
+  equipment_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -41,6 +48,28 @@ export interface Job {
 export interface ChecklistItem {
   label: string
   done: boolean
+}
+
+export interface LineItem {
+  description: string
+  quantity: number
+  unit_price: number
+}
+
+export interface Equipment {
+  id: string
+  user_id: string
+  client_id?: string | null
+  label: string
+  brand?: string | null
+  model?: string | null
+  serial?: string | null
+  btu?: string | null
+  location?: string | null
+  install_date?: string | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Expense {

@@ -10,7 +10,8 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { UpcomingJobs } from '@/components/dashboard/upcoming-jobs'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
-import { getDashboardStats, getPendingBalance, getTodayJobs, getTomorrowJobs } from '@/services/jobs'
+import { getDashboardStats, getPendingBalance, getTodayJobs, getTomorrowJobs, getFollowupsDue } from '@/services/jobs'
+import { updateJob } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
 import { getSettings } from '@/services/settings'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -73,6 +74,20 @@ export default function DashboardPage() {
   const [incomeGoal, setIncomeGoal] = useState(0)
   const [prevRevenue, setPrevRevenue] = useState<number | null>(null)
   const [dueMaintenance, setDueMaintenance] = useState<Client[]>([])
+  const [followups, setFollowups] = useState<Job[]>([])
+
+  useEffect(() => {
+    getFollowupsDue().then(setFollowups).catch(() => {})
+  }, [])
+
+  const markFollowupDone = async (jobId: string) => {
+    setFollowups((prev) => prev.filter((j) => j.id !== jobId))
+    try {
+      await updateJob(jobId, { followup_done: true })
+    } catch {
+      // si falla, no es crítico
+    }
+  }
 
   useEffect(() => {
     getClients()
@@ -220,6 +235,34 @@ export default function DashboardPage() {
                 </Card>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Follow-ups due */}
+      {followups.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            Seguimientos ({followups.length})
+          </h2>
+          <div className="space-y-3">
+            {followups.map((job) => (
+              <Card key={job.id}>
+                <CardContent className="p-3 flex items-center justify-between gap-2">
+                  <Link href={`/trabajos/${job.id}`} className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{job.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {job.client ? `${job.client.name} · ` : ''}
+                      {job.followup_at && formatDate(job.followup_at)}
+                    </p>
+                  </Link>
+                  <Button size="sm" variant="outline" className="flex-shrink-0 h-8" onClick={() => markFollowupDone(job.id)}>
+                    Listo
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       )}
