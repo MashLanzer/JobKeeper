@@ -136,6 +136,24 @@ export async function getTodayJobs(): Promise<Job[]> {
   return data as Job[]
 }
 
+export async function getTomorrowJobs(): Promise<Job[]> {
+  const supabase = createClient()
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString()
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59).toISOString()
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*, client:clients(id, name)')
+    .gte('scheduled_at', start)
+    .lte('scheduled_at', end)
+    .in('status', ['pendiente', 'en_progreso'])
+    .order('scheduled_at', { ascending: true })
+
+  if (error) throw error
+  return data as Job[]
+}
+
 export async function getPendingBalance() {
   const supabase = createClient()
   const { data: jobs, error } = await supabase

@@ -9,7 +9,7 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { UpcomingJobs } from '@/components/dashboard/upcoming-jobs'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
-import { getDashboardStats, getPendingBalance, getTodayJobs } from '@/services/jobs'
+import { getDashboardStats, getPendingBalance, getTodayJobs, getTomorrowJobs } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
 import { getSettings } from '@/services/settings'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [todayJobs, setTodayJobs] = useState<Job[]>([])
+  const [tomorrowJobs, setTomorrowJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [incomeGoal, setIncomeGoal] = useState(0)
   const [dueMaintenance, setDueMaintenance] = useState<Client[]>([])
@@ -82,11 +83,12 @@ export default function DashboardPage() {
     const loadStats = async () => {
       try {
         const now = new Date()
-        const [jobStats, financeStats, pendingBalance, today] = await Promise.all([
+        const [jobStats, financeStats, pendingBalance, today, tomorrow] = await Promise.all([
           getDashboardStats(),
           getFinanceSummary(now.getFullYear(), now.getMonth() + 1),
           getPendingBalance(),
           getTodayJobs(),
+          getTomorrowJobs(),
         ])
 
         setStats({
@@ -99,6 +101,7 @@ export default function DashboardPage() {
           pendingBalance,
         })
         setTodayJobs(today)
+        setTomorrowJobs(tomorrow)
       } catch (err) {
         console.error('Error loading dashboard:', err)
       } finally {
@@ -228,6 +231,40 @@ export default function DashboardPage() {
                     </span>
                   </CardContent>
                 </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tomorrow reminder */}
+      {tomorrowJobs.length > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm font-semibold flex items-center gap-2 mb-1.5">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            Mañana tienes {tomorrowJobs.length} trabajo{tomorrowJobs.length !== 1 ? 's' : ''}
+          </p>
+          <div className="space-y-1">
+            {tomorrowJobs.map((job) => (
+              <Link
+                key={job.id}
+                href={`/trabajos/${job.id}`}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="truncate">
+                  {job.scheduled_at &&
+                    new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  {' · '}
+                  {job.title}
+                </span>
+                {job.client && (
+                  <span className="text-xs text-muted-foreground flex-shrink-0 truncate max-w-[35%]">
+                    {job.client.name}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
