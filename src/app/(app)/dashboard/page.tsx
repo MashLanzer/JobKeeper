@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle } from 'lucide-react'
+import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { UpcomingJobs } from '@/components/dashboard/upcoming-jobs'
+import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
-import { getDashboardStats, getPendingBalance } from '@/services/jobs'
+import { getDashboardStats, getPendingBalance, getTodayJobs } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
 import { formatCurrency } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+import type { Job } from '@/types'
 
 interface Stats {
   completedThisMonth: number
@@ -42,6 +45,7 @@ function getGreeting(user: { email?: string | null; user_metadata?: Record<strin
 export default function DashboardPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
+  const [todayJobs, setTodayJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [incomeGoal, setIncomeGoal] = useState(0)
 
@@ -55,10 +59,11 @@ export default function DashboardPage() {
     const loadStats = async () => {
       try {
         const now = new Date()
-        const [jobStats, financeStats, pendingBalance] = await Promise.all([
+        const [jobStats, financeStats, pendingBalance, today] = await Promise.all([
           getDashboardStats(),
           getFinanceSummary(now.getFullYear(), now.getMonth() + 1),
           getPendingBalance(),
+          getTodayJobs(),
         ])
 
         setStats({
@@ -70,6 +75,7 @@ export default function DashboardPage() {
           upcomingJobs: jobStats.upcomingJobs,
           pendingBalance,
         })
+        setTodayJobs(today)
       } catch (err) {
         console.error('Error loading dashboard:', err)
       } finally {
@@ -125,6 +131,43 @@ export default function DashboardPage() {
             </p>
           </div>
         </Link>
+      )}
+
+      {/* Today's agenda */}
+      {todayJobs.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            Hoy ({todayJobs.length})
+          </h2>
+          <div className="space-y-3">
+            {todayJobs.map((job) => (
+              <Link key={job.id} href={`/trabajos/${job.id}`}>
+                <Card className="hover:border-primary/50 transition-colors">
+                  <CardContent className="p-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium truncate">{job.title}</h3>
+                        <JobStatusBadge status={job.status} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {job.scheduled_at &&
+                          new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        {job.client ? ` · ${job.client.name}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-green-500 flex-shrink-0">
+                      {formatCurrency(job.price)}
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-3">

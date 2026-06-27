@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Download, Copy, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,19 +13,26 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useJob } from '@/hooks/use-jobs'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { getBusinessInfo } from '@/lib/business'
+import { sharePdf } from '@/lib/share-pdf'
 
 export default function JobDetailPage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
-  const { job, loading, error, remove } = useJob(id)
+  const { job, loading, error, remove, update } = useJob(id)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [generatingQuote, setGeneratingQuote] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   const handleGeneratePDF = async () => {
     if (!job) return
     setGeneratingPdf(true)
     try {
+      const business = getBusinessInfo()
+      const businessName = business.name.trim() || 'WorkLedger'
+      const contact = [business.phone, business.email].filter(Boolean).join('   ·   ')
+
       const { jsPDF } = await import('jspdf')
       const doc = new jsPDF({ unit: 'mm', format: 'a4' })
 
@@ -39,10 +46,14 @@ export default function JobDetailPage() {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
-      doc.text('WorkLedger', margin, 17)
+      doc.text(businessName, margin, 15)
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
-      doc.text('RECIBO DE TRABAJO', pageW - margin, 17, { align: 'right' })
+      doc.text('RECIBO DE TRABAJO', pageW - margin, 15, { align: 'right' })
+      if (contact) {
+        doc.setFontSize(8)
+        doc.text(contact, margin, 22)
+      }
 
       y = 40
 
@@ -155,11 +166,11 @@ export default function JobDetailPage() {
       doc.setFont('helvetica', 'normal')
       const genDate = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })
       doc.text(`Generado el ${genDate}`, margin, pageH - 10)
-      doc.text('WorkLedger', pageW - margin, pageH - 10, { align: 'right' })
+      doc.text(businessName, pageW - margin, pageH - 10, { align: 'right' })
 
       const safeTitle = job.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
-      doc.save(`recibo-${safeTitle}.pdf`)
-      toast.success('Recibo generado correctamente')
+      const result = await sharePdf(doc, `recibo-${safeTitle}.pdf`, `Recibo - ${job.title}`)
+      toast.success(result === 'shared' ? 'Recibo listo para enviar' : 'Recibo descargado')
     } catch {
       toast.error('Error al generar el recibo')
     } finally {
@@ -189,6 +200,10 @@ export default function JobDetailPage() {
     if (!job) return
     setGeneratingQuote(true)
     try {
+      const business = getBusinessInfo()
+      const businessName = business.name.trim() || 'WorkLedger'
+      const contact = [business.phone, business.email].filter(Boolean).join('   ·   ')
+
       const { jsPDF } = await import('jspdf')
       const doc = new jsPDF({ unit: 'mm', format: 'a4' })
       const pageW = doc.internal.pageSize.getWidth()
@@ -201,10 +216,14 @@ export default function JobDetailPage() {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
-      doc.text('WorkLedger', margin, 17)
+      doc.text(businessName, margin, 15)
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
-      doc.text('COTIZACIÓN', pageW - margin, 17, { align: 'right' })
+      doc.text('COTIZACIÓN', pageW - margin, 15, { align: 'right' })
+      if (contact) {
+        doc.setFontSize(8)
+        doc.text(contact, margin, 22)
+      }
 
       y = 40
       doc.setTextColor(30, 30, 30)
@@ -308,15 +327,45 @@ export default function JobDetailPage() {
       doc.setTextColor(150, 150, 150)
       doc.setFont('helvetica', 'normal')
       doc.text(`Generado el ${dateStr}`, margin, pageH - 10)
-      doc.text('WorkLedger', pageW - margin, pageH - 10, { align: 'right' })
+      doc.text(businessName, pageW - margin, pageH - 10, { align: 'right' })
 
       const safeTitle = job.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
-      doc.save(`cotizacion-${safeTitle}.pdf`)
-      toast.success('Cotización generada')
+      const result = await sharePdf(doc, `cotizacion-${safeTitle}.pdf`, `Cotización - ${job.title}`)
+      toast.success(result === 'shared' ? 'Cotización lista para enviar' : 'Cotización descargada')
     } catch {
       toast.error('Error al generar la cotización')
     } finally {
       setGeneratingQuote(false)
+    }
+  }
+
+  const handleMarkPaid = async () => {
+    if (!job) return
+    setUpdatingStatus(true)
+    try {
+      await update({ deposit: job.price })
+      toast.success('Trabajo marcado como cobrado')
+    } catch {
+      toast.error('Error al actualizar el cobro')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const handleChangeStatus = async (status: 'en_progreso' | 'completado') => {
+    if (!job) return
+    setUpdatingStatus(true)
+    try {
+      const patch: Record<string, unknown> = { status }
+      if (status === 'completado' && !job.completed_at) {
+        patch.completed_at = new Date().toISOString()
+      }
+      await update(patch)
+      toast.success(status === 'completado' ? 'Trabajo completado' : 'Trabajo iniciado')
+    } catch {
+      toast.error('Error al cambiar el estado')
+    } finally {
+      setUpdatingStatus(false)
     }
   }
 
@@ -399,6 +448,31 @@ export default function JobDetailPage() {
         )}
       </div>
 
+      {/* Quick status actions */}
+      {job.status !== 'completado' && job.status !== 'cancelado' && (
+        <div className="flex gap-2">
+          {job.status === 'pendiente' && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleChangeStatus('en_progreso')}
+              disabled={updatingStatus}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Iniciar
+            </Button>
+          )}
+          <Button
+            className="flex-1"
+            onClick={() => handleChangeStatus('completado')}
+            disabled={updatingStatus}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+            Completar
+          </Button>
+        </div>
+      )}
+
       {/* Main info */}
       <Card>
         <CardContent className="p-4 space-y-4">
@@ -417,9 +491,18 @@ export default function JobDetailPage() {
           {job.address && (
             <div className="flex items-start gap-3">
               <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground">Dirección</p>
                 <p className="text-sm">{job.address}</p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary mt-1"
+                >
+                  <Navigation className="h-3 w-3" />
+                  Abrir en mapa
+                </a>
               </div>
             </div>
           )}
@@ -494,6 +577,17 @@ export default function JobDetailPage() {
               </>
             )}
           </div>
+
+          {pending > 0 && (
+            <Button
+              className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleMarkPaid}
+              disabled={updatingStatus}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Marcar como cobrado ({formatCurrency(pending)})
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -506,12 +600,12 @@ export default function JobDetailPage() {
           </Link>
         </Button>
         <Button variant="outline" onClick={handleGeneratePDF} disabled={generatingPdf}>
-          <Download className="h-4 w-4 mr-2" />
-          {generatingPdf ? 'Generando...' : 'Recibo PDF'}
+          <Share2 className="h-4 w-4 mr-2" />
+          {generatingPdf ? 'Generando...' : 'Recibo'}
         </Button>
         <Button variant="outline" onClick={handleGenerateQuote} disabled={generatingQuote}>
           <ClipboardList className="h-4 w-4 mr-2" />
-          {generatingQuote ? 'Generando...' : 'Cotización PDF'}
+          {generatingQuote ? 'Generando...' : 'Cotización'}
         </Button>
         <Button variant="outline" onClick={handleDuplicate} className="col-span-2">
           <Copy className="h-4 w-4 mr-2" />

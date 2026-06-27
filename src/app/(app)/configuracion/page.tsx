@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target } from 'lucide-react'
+import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth'
 import { useTheme } from '@/components/providers/theme-provider'
 import { getInitials, formatCurrency } from '@/lib/utils'
+import { getBusinessInfo, saveBusinessInfo, type BusinessInfo } from '@/lib/business'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
@@ -19,6 +21,7 @@ export default function ConfiguracionPage() {
   const router = useRouter()
   const [goalInput, setGoalInput] = useState('')
   const [savedGoal, setSavedGoal] = useState(0)
+  const [business, setBusiness] = useState<BusinessInfo>({ name: '', phone: '', email: '' })
 
   const goalKey = `income_goal_${user?.id || 'default'}`
 
@@ -29,6 +32,19 @@ export default function ConfiguracionPage() {
       setGoalInput(val)
     }
   }, [goalKey])
+
+  useEffect(() => {
+    setBusiness(getBusinessInfo())
+  }, [])
+
+  const handleSaveBusiness = () => {
+    saveBusinessInfo({
+      name: business.name.trim(),
+      phone: business.phone.trim(),
+      email: business.email.trim(),
+    })
+    toast.success('Datos del negocio guardados')
+  }
 
   const handleSaveGoal = () => {
     const val = Number(goalInput)
@@ -93,6 +109,52 @@ export default function ConfiguracionPage() {
             <Mail className="h-4 w-4 flex-shrink-0" />
             <span className="truncate">{email}</span>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Business info */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Datos del negocio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Aparecen en los recibos y cotizaciones PDF que envías a tus clientes.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="bizName" className="text-xs">Nombre del negocio</Label>
+            <Input
+              id="bizName"
+              placeholder="Ej: Refrigeración Ibarra"
+              value={business.name}
+              onChange={(e) => setBusiness((b) => ({ ...b, name: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bizPhone" className="text-xs">Teléfono</Label>
+            <Input
+              id="bizPhone"
+              placeholder="Ej: (813) 555-0199"
+              value={business.phone}
+              onChange={(e) => setBusiness((b) => ({ ...b, phone: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bizEmail" className="text-xs">Email</Label>
+            <Input
+              id="bizEmail"
+              type="email"
+              placeholder="Ej: contacto@negocio.com"
+              value={business.email}
+              onChange={(e) => setBusiness((b) => ({ ...b, email: e.target.value }))}
+            />
+          </div>
+          <Button onClick={handleSaveBusiness} size="sm" className="w-full">
+            Guardar datos del negocio
+          </Button>
         </CardContent>
       </Card>
 
