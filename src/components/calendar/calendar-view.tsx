@@ -174,7 +174,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
           {selectedDayJobs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sin trabajos este día</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {selectedDayJobs.map((job) => (
                 <Link key={job.id} href={`/trabajos/${job.id}`}>
                   <Card className="hover:border-primary/50 transition-colors">

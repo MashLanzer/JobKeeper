@@ -262,7 +262,7 @@ export default function ClienteDetailPage() {
             Este cliente no tiene trabajos registrados
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {jobs.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}

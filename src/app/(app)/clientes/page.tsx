@@ -75,7 +75,7 @@ export default function ClientesPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {clients.map((client) => (
             <ClientCard key={client.id} client={client} />
           ))}

@@ -229,7 +229,7 @@ export default function FinanzasPage() {
               <TabsTrigger value="gastos" className="flex-1">Gastos</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ingresos" className="space-y-4 mt-4">
+            <TabsContent value="ingresos" className="space-y-5 mt-4">
               {recentJobs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   Sin ingresos este mes

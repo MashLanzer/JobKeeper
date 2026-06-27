@@ -80,7 +80,7 @@ export default function GastosPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {expenses.map((expense) => (
             <ExpenseCard
               key={expense.id}
