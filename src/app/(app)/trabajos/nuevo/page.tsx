@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { JobForm } from '@/components/jobs/job-form'
 import { useClients } from '@/hooks/use-clients'
 import { useCreateJob } from '@/hooks/use-jobs'
-import { getTemplates, removeTemplate, type JobTemplate } from '@/lib/templates'
+import { getTemplates, deleteTemplate, type JobTemplate } from '@/services/templates'
 import { formatCurrency } from '@/lib/utils'
 import type { Job } from '@/types'
 
@@ -28,7 +28,7 @@ export default function NuevoTrabajoPage() {
       sessionStorage.removeItem('duplicate_job')
       setInitialData(JSON.parse(raw))
     }
-    setTemplates(getTemplates())
+    getTemplates().then(setTemplates).catch(() => {})
     setReady(true)
   }, [])
 
@@ -37,9 +37,13 @@ export default function NuevoTrabajoPage() {
     setUsedTemplate(true)
   }
 
-  const handleRemoveTemplate = (id: string) => {
-    removeTemplate(id)
-    setTemplates(getTemplates())
+  const handleRemoveTemplate = async (id: string) => {
+    try {
+      await deleteTemplate(id)
+      setTemplates((prev) => prev.filter((t) => t.id !== id))
+    } catch {
+      toast.error('No se pudo eliminar la plantilla')
+    }
   }
 
   const handleSubmit = async (data: any) => {

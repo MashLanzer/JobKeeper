@@ -18,7 +18,7 @@ import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
 import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
-import { saveTemplate } from '@/lib/templates'
+import { createTemplate } from '@/services/templates'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -261,20 +261,24 @@ export default function JobDetailPage() {
     }
   }
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!job) return
     const name = window.prompt('Nombre de la plantilla', job.title)
     if (!name || !name.trim()) return
-    saveTemplate(name.trim(), {
-      title: job.title,
-      description: job.description || '',
-      address: job.address || '',
-      category: job.category,
-      price: job.price,
-      payment_method: job.payment_method || '',
-      notes: job.notes || '',
-    })
-    toast.success('Plantilla guardada')
+    try {
+      await createTemplate(name.trim(), {
+        title: job.title,
+        description: job.description || '',
+        address: job.address || '',
+        category: job.category,
+        price: job.price,
+        payment_method: job.payment_method || '',
+        notes: job.notes || '',
+      })
+      toast.success('Plantilla guardada')
+    } catch {
+      toast.error('No se pudo guardar la plantilla')
+    }
   }
 
   const handleDuplicate = () => {
