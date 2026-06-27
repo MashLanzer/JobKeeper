@@ -19,6 +19,7 @@ import { nextFolio } from '@/lib/folio'
 import { getChecklist, saveChecklist, type ChecklistItem } from '@/lib/checklist'
 import { getSignature, saveSignature, removeSignature } from '@/lib/signature'
 import { SignaturePad } from '@/components/jobs/signature-pad'
+import { saveTemplate } from '@/lib/templates'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -249,6 +250,22 @@ export default function JobDetailPage() {
     } finally {
       setGeneratingPdf(false)
     }
+  }
+
+  const handleSaveTemplate = () => {
+    if (!job) return
+    const name = window.prompt('Nombre de la plantilla', job.title)
+    if (!name || !name.trim()) return
+    saveTemplate(name.trim(), {
+      title: job.title,
+      description: job.description || '',
+      address: job.address || '',
+      category: job.category,
+      price: job.price,
+      payment_method: job.payment_method || '',
+      notes: job.notes || '',
+    })
+    toast.success('Plantilla guardada')
   }
 
   const handleDuplicate = () => {
@@ -786,9 +803,13 @@ export default function JobDetailPage() {
           <ClipboardList className="h-4 w-4 mr-2" />
           {generatingQuote ? 'Generando...' : 'Cotización'}
         </Button>
-        <Button variant="outline" onClick={handleDuplicate} className="col-span-2">
+        <Button variant="outline" onClick={handleDuplicate}>
           <Copy className="h-4 w-4 mr-2" />
-          Duplicar trabajo
+          Duplicar
+        </Button>
+        <Button variant="outline" onClick={handleSaveTemplate}>
+          <ClipboardList className="h-4 w-4 mr-2" />
+          Plantilla
         </Button>
       </div>
     </div>
