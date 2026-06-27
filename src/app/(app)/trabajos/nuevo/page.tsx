@@ -23,10 +23,15 @@ export default function NuevoTrabajoPage() {
   const [usedTemplate, setUsedTemplate] = useState(false)
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('duplicate_job')
-    if (raw) {
+    const dup = sessionStorage.getItem('duplicate_job')
+    const prefill = sessionStorage.getItem('prefill_job')
+    if (dup) {
       sessionStorage.removeItem('duplicate_job')
-      setInitialData(JSON.parse(raw))
+      setInitialData(JSON.parse(dup))
+    } else if (prefill) {
+      sessionStorage.removeItem('prefill_job')
+      setInitialData(JSON.parse(prefill))
+      setUsedTemplate(true) // título "Nuevo desde plantilla/agenda", no "Duplicar"
     }
     getTemplates().then(setTemplates).catch(() => {})
     setReady(true)

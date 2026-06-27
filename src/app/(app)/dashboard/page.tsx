@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -47,11 +48,30 @@ function getGreeting(user: { email?: string | null; user_metadata?: Record<strin
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const router = useRouter()
+
+  const scheduleMaintenance = (c: Client) => {
+    const data = {
+      title: 'Mantenimiento A/C',
+      description: '',
+      address: c.address || '',
+      category: 'A/C - Mantenimiento',
+      client_id: c.id,
+      price: 0,
+      deposit: 0,
+      status: 'pendiente',
+      payment_method: '',
+      notes: '',
+    }
+    sessionStorage.setItem('prefill_job', JSON.stringify(data))
+    router.push('/trabajos/nuevo')
+  }
   const [stats, setStats] = useState<Stats | null>(null)
   const [todayJobs, setTodayJobs] = useState<Job[]>([])
   const [tomorrowJobs, setTomorrowJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [incomeGoal, setIncomeGoal] = useState(0)
+  const [prevRevenue, setPrevRevenue] = useState<number | null>(null)
   const [dueMaintenance, setDueMaintenance] = useState<Client[]>([])
 
   useEffect(() => {
@@ -83,13 +103,16 @@ export default function DashboardPage() {
     const loadStats = async () => {
       try {
         const now = new Date()
-        const [jobStats, financeStats, pendingBalance, today, tomorrow] = await Promise.all([
+        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const [jobStats, financeStats, pendingBalance, today, tomorrow, prevFinance] = await Promise.all([
           getDashboardStats(),
           getFinanceSummary(now.getFullYear(), now.getMonth() + 1),
           getPendingBalance(),
           getTodayJobs(),
           getTomorrowJobs(),
+          getFinanceSummary(prev.getFullYear(), prev.getMonth() + 1),
         ])
+        setPrevRevenue(prevFinance.totalIncome)
 
         setStats({
           completedThisMonth: jobStats.completedThisMonth,
@@ -116,6 +139,14 @@ export default function DashboardPage() {
 
   const now = new Date()
   const monthName = now.toLocaleString('es-ES', { month: 'long' })
+
+  const rev = stats?.revenueThisMonth || 0
+  const revComparison =
+    prevRevenue !== null && prevRevenue > 0
+      ? `${rev >= prevRevenue ? '↑' : '↓'} ${Math.abs(Math.round(((rev - prevRevenue) / prevRevenue) * 100))}% vs mes pasado`
+      : prevRevenue === 0 && rev > 0
+        ? 'primer ingreso del periodo'
+        : undefined
 
   return (
     <div className="space-y-6 page-transition">
@@ -172,28 +203,21 @@ export default function DashboardPage() {
               const months = c.maintenance_months as number
               const overdue = maintenanceStatus(last, months) === 'due'
               return (
-                <Link key={c.id} href={`/clientes/${c.id}`}>
-                  <Card className={overdue ? 'border-destructive/40' : 'border-amber-500/30'}>
-                    <CardContent className="p-3 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{c.name || 'Cliente'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {overdue ? 'Vencido — ' : 'Próximo — '}
-                          {formatDate(nextDueDate(last, months).toISOString())}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-xs font-medium px-2 py-1 rounded-full ${
-                          overdue
-                            ? 'bg-destructive/10 text-destructive'
-                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                        }`}
-                      >
-                        {overdue ? 'Vencido' : 'Próximo'}
-                      </span>
-                    </CardContent>
-                  </Card>
-                </Link>
+                <Card key={c.id} className={overdue ? 'border-destructive/40' : 'border-amber-500/30'}>
+                  <CardContent className="p-3 flex items-center justify-between gap-2">
+                    <Link href={`/clientes/${c.id}`} className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{c.name || 'Cliente'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {overdue ? 'Vencido — ' : 'Próximo — '}
+                        {formatDate(nextDueDate(last, months).toISOString())}
+                      </p>
+                    </Link>
+                    <Button size="sm" variant="outline" className="flex-shrink-0 h-8" onClick={() => scheduleMaintenance(c)}>
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Agendar
+                    </Button>
+                  </CardContent>
+                </Card>
               )
             })}
           </div>
@@ -275,6 +299,7 @@ export default function DashboardPage() {
         <StatCard
           title="Ingresos del mes"
           value={formatCurrency(stats?.revenueThisMonth || 0)}
+          subtitle={revComparison}
           icon={DollarSign}
           iconColor="text-green-500"
           iconBg="bg-green-500/10"

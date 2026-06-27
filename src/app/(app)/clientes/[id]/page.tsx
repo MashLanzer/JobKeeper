@@ -18,6 +18,7 @@ import { deleteClient, updateClient } from '@/services/clients'
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils'
 import { nextDueDate, maintenanceStatus, hasMaintenance } from '@/lib/maintenance'
 import { getPaymentsTotalForJobs } from '@/services/payments'
+import { getSettings, businessNameOf } from '@/services/settings'
 import type { Client, Job } from '@/types'
 import {
   Dialog,
@@ -43,6 +44,8 @@ export default function ClienteDetailPage() {
   const [maintLast, setMaintLast] = useState('')
   const [maintSaving, setMaintSaving] = useState(false)
   const [paymentsTotal, setPaymentsTotal] = useState(0)
+  const [paymentsMap, setPaymentsMap] = useState<Record<string, number>>({})
+  const [generatingStatement, setGeneratingStatement] = useState(false)
 
   useEffect(() => {
     const loadClient = async () => {
@@ -56,6 +59,7 @@ export default function ClienteDetailPage() {
 
         const ids = clientJobs.filter((j) => j.status !== 'cancelado').map((j) => j.id)
         const totals = await getPaymentsTotalForJobs(ids)
+        setPaymentsMap(totals)
         setPaymentsTotal(Object.values(totals).reduce((s, v) => s + v, 0))
       } catch {
         toast.error('Error al cargar el cliente')
@@ -66,6 +70,83 @@ export default function ClienteDetailPage() {
 
     loadClient()
   }, [id])
+
+  const handleGenerateStatement = async () => {
+    if (!client) return
+    setGeneratingStatement(true)
+    try {
+      const settings = await getSettings()
+      const businessName = businessNameOf(settings)
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
+      const doc = new jsPDF()
+      const pageW = doc.internal.pageSize.getWidth()
+      const margin = 14
+
+      doc.setFillColor(99, 102, 241)
+      doc.rect(0, 0, pageW, 26, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(businessName, margin, 16)
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Estado de cuenta', pageW - margin, 16, { align: 'right' })
+
+      doc.setTextColor(30, 30, 30)
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      doc.text(client.name, margin, 38)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(110, 110, 110)
+      let y = 44
+      if (client.phone) { doc.text(client.phone, margin, y); y += 5 }
+      if (client.email) { doc.text(client.email, margin, y); y += 5 }
+      doc.text(`Emitido: ${new Date().toLocaleDateString('es-ES', { dateStyle: 'long' })}`, margin, y)
+
+      const active = jobs.filter((j) => j.status !== 'cancelado')
+      let totalBilled = 0
+      let totalCollected = 0
+      const body = active.map((j) => {
+        const collected = Number(j.deposit) + (paymentsMap[j.id] || 0)
+        const pending = Number(j.price) - collected
+        totalBilled += Number(j.price)
+        totalCollected += collected
+        return [
+          j.title,
+          j.scheduled_at ? formatDate(j.scheduled_at) : formatDate(j.created_at),
+          formatCurrency(Number(j.price)),
+          formatCurrency(collected),
+          formatCurrency(pending),
+        ]
+      })
+
+      autoTable(doc, {
+        startY: y + 6,
+        head: [['Trabajo', 'Fecha', 'Precio', 'Cobrado', 'Pendiente']],
+        body,
+        foot: [[
+          'TOTAL',
+          '',
+          formatCurrency(totalBilled),
+          formatCurrency(totalCollected),
+          formatCurrency(totalBilled - totalCollected),
+        ]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [99, 102, 241] },
+        footStyles: { fillColor: [238, 238, 248], textColor: [30, 30, 30], fontStyle: 'bold' },
+      })
+
+      const safeName = client.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+      doc.save(`estado-cuenta-${safeName}.pdf`)
+      toast.success('Estado de cuenta descargado')
+    } catch {
+      toast.error('Error al generar el estado de cuenta')
+    } finally {
+      setGeneratingStatement(false)
+    }
+  }
 
   const handleSaveMaintenance = async () => {
     const months = Number(maintMonths)
@@ -366,6 +447,16 @@ export default function ClienteDetailPage() {
                   {formatCurrency(balance)}
                 </span>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2"
+                onClick={handleGenerateStatement}
+                disabled={generatingStatement}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {generatingStatement ? 'Generando...' : 'Estado de cuenta PDF'}
+              </Button>
             </CardContent>
           </Card>
         )
