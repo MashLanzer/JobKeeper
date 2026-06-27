@@ -31,8 +31,16 @@ export interface Job {
   status: JobStatus
   payment_method?: string
   notes?: string
+  checklist?: ChecklistItem[] | null
+  signature?: string | null
+  paid_at?: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ChecklistItem {
+  label: string
+  done: boolean
 }
 
 export interface Expense {

@@ -16,8 +16,7 @@ import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { getSettings, type BusinessSettings } from '@/services/settings'
 import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
-import { getChecklist, saveChecklist, type ChecklistItem } from '@/lib/checklist'
-import { getSignature, saveSignature, removeSignature } from '@/lib/signature'
+import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
 import { saveTemplate } from '@/lib/templates'
 
@@ -35,23 +34,26 @@ export default function JobDetailPage() {
     name: '', phone: '', email: '', logo: '', income_goal: 0,
   })
 
+  // Sincroniza checklist y firma cuando el trabajo carga/cambia.
   useEffect(() => {
-    if (id) {
-      setChecklist(getChecklist(id))
-      setSignature(getSignature(id))
+    if (job) {
+      setChecklist(buildChecklist(job.checklist))
+      setSignature(job.signature ?? null)
     }
-  }, [id])
+  }, [job])
 
   useEffect(() => {
     getSettings().then(setSettings).catch(() => {})
   }, [])
 
-  const toggleChecklistItem = (index: number) => {
-    setChecklist((prev) => {
-      const next = prev.map((it, i) => (i === index ? { ...it, done: !it.done } : it))
-      saveChecklist(id, next)
-      return next
-    })
+  const toggleChecklistItem = async (index: number) => {
+    const next = checklist.map((it, i) => (i === index ? { ...it, done: !it.done } : it))
+    setChecklist(next) // optimista
+    try {
+      await update({ checklist: next })
+    } catch {
+      toast.error('No se pudo guardar el checklist')
+    }
   }
 
   const handleGeneratePDF = async () => {
@@ -739,14 +741,22 @@ export default function JobDetailPage() {
           </h3>
           <SignaturePad
             initial={signature}
-            onSave={(dataUrl) => {
-              saveSignature(id, dataUrl)
+            onSave={async (dataUrl) => {
               setSignature(dataUrl)
-              toast.success('Firma guardada')
+              try {
+                await update({ signature: dataUrl })
+                toast.success('Firma guardada')
+              } catch {
+                toast.error('No se pudo guardar la firma')
+              }
             }}
-            onClear={() => {
-              removeSignature(id)
+            onClear={async () => {
               setSignature(null)
+              try {
+                await update({ signature: null })
+              } catch {
+                // ignore
+              }
             }}
           />
         </CardContent>
