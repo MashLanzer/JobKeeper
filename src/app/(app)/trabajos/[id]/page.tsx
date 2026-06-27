@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation, Circle, ListChecks } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +16,9 @@ import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { getBusinessInfo } from '@/lib/business'
 import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
+import { getChecklist, saveChecklist, type ChecklistItem } from '@/lib/checklist'
+import { getSignature, saveSignature, removeSignature } from '@/lib/signature'
+import { SignaturePad } from '@/components/jobs/signature-pad'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -25,6 +28,23 @@ export default function JobDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [generatingQuote, setGeneratingQuote] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([])
+  const [signature, setSignature] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (id) {
+      setChecklist(getChecklist(id))
+      setSignature(getSignature(id))
+    }
+  }, [id])
+
+  const toggleChecklistItem = (index: number) => {
+    setChecklist((prev) => {
+      const next = prev.map((it, i) => (i === index ? { ...it, done: !it.done } : it))
+      saveChecklist(id, next)
+      return next
+    })
+  }
 
   const handleGeneratePDF = async () => {
     if (!job) return
@@ -171,6 +191,45 @@ export default function JobDetailPage() {
         doc.line(margin, y - 2, pageW - margin, y - 2)
         const pending = job.price - job.deposit
         finRow('Pendiente por cobrar', formatCurrency(pending), true, pending > 0 ? [202, 138, 4] : [22, 163, 74])
+      }
+
+      // Tareas realizadas (checklist)
+      const doneTasks = checklist.filter((i) => i.done)
+      if (doneTasks.length > 0) {
+        y += 4
+        doc.setDrawColor(220, 220, 220)
+        doc.line(margin, y, pageW - margin, y)
+        y += 6
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11)
+        doc.setTextColor(79, 70, 229)
+        doc.text('TAREAS REALIZADAS', margin, y)
+        y += 6
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(30, 30, 30)
+        doneTasks.forEach((t) => {
+          doc.text(`•  ${t.label}`, margin, y)
+          y += 6
+        })
+      }
+
+      // Firma del cliente
+      if (signature) {
+        try {
+          y += 6
+          doc.addImage(signature, 'PNG', margin, y, 50, 22)
+          y += 24
+          doc.setDrawColor(150, 150, 150)
+          doc.line(margin, y, margin + 50, y)
+          y += 4
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(8)
+          doc.setTextColor(120, 120, 120)
+          doc.text('Firma del cliente', margin, y)
+        } catch {
+          // firma inválida: se omite
+        }
       }
 
       // Footer
@@ -611,6 +670,61 @@ export default function JobDetailPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Service checklist */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-primary" />
+              Checklist de servicio
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              {checklist.filter((i) => i.done).length}/{checklist.length}
+            </span>
+          </div>
+          <div className="space-y-1">
+            {checklist.map((item, i) => (
+              <button
+                key={item.label}
+                onClick={() => toggleChecklistItem(i)}
+                className="flex items-center gap-3 w-full text-left py-2 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                {item.done ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground/40 flex-shrink-0" />
+                )}
+                <span className={`text-sm ${item.done ? 'line-through text-muted-foreground' : ''}`}>
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Client signature */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Edit className="h-4 w-4 text-primary" />
+            Firma del cliente
+          </h3>
+          <SignaturePad
+            initial={signature}
+            onSave={(dataUrl) => {
+              saveSignature(id, dataUrl)
+              setSignature(dataUrl)
+              toast.success('Firma guardada')
+            }}
+            onClear={() => {
+              removeSignature(id)
+              setSignature(null)
+            }}
+          />
         </CardContent>
       </Card>
 
