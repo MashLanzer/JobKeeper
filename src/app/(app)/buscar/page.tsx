@@ -106,7 +106,7 @@ export default function BuscarPage() {
                 <Briefcase className="h-4 w-4" />
                 Trabajos ({jobs.length})
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {jobs.map((job) => (
                   <Link key={job.id} href={`/trabajos/${job.id}`}>
                     <Card className="hover:border-primary/50 transition-colors">
@@ -138,7 +138,7 @@ export default function BuscarPage() {
                 <Users className="h-4 w-4" />
                 Clientes ({clients.length})
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {clients.map((client) => (
                   <Link key={client.id} href={`/clientes/${client.id}`}>
                     <Card className="hover:border-primary/50 transition-colors">
@@ -168,7 +168,7 @@ export default function BuscarPage() {
                 <Receipt className="h-4 w-4" />
                 Gastos ({expenses.length})
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {expenses.map((expense) => (
                   <Link key={expense.id} href="/gastos">
                     <Card className="hover:border-primary/50 transition-colors">

@@ -207,12 +207,12 @@ export default function DashboardPage() {
 
       {/* Maintenance due */}
       {dueMaintenance.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h2 className="text-sm font-semibold flex items-center gap-2">
             <Wrench className="h-4 w-4 text-amber-500" />
             Mantenimientos ({dueMaintenance.length})
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {dueMaintenance.map((c) => {
               const last = c.last_service_date as string
               const months = c.maintenance_months as number
@@ -241,12 +241,12 @@ export default function DashboardPage() {
 
       {/* Follow-ups due */}
       {followups.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h2 className="text-sm font-semibold flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
             Seguimientos ({followups.length})
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {followups.map((job) => (
               <Card key={job.id}>
                 <CardContent className="p-3 flex items-center justify-between gap-2">
@@ -269,12 +269,12 @@ export default function DashboardPage() {
 
       {/* Today's agenda */}
       {todayJobs.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h2 className="text-sm font-semibold flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
             Hoy ({todayJobs.length})
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {todayJobs.map((job) => (
               <Link key={job.id} href={`/trabajos/${job.id}`}>
                 <Card className="hover:border-primary/50 transition-colors">
