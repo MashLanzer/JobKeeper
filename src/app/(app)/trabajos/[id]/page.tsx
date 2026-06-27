@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation, Circle, ListChecks } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation, Circle, ListChecks, ImageIcon, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,6 +20,7 @@ import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
 import { createTemplate } from '@/services/templates'
 import { getPayments, addPayment, deletePayment, type Payment } from '@/services/payments'
+import { getPhotos, uploadPhoto, deletePhoto, type JobPhoto } from '@/services/photos'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PAYMENT_METHODS } from '@/types'
@@ -44,9 +45,48 @@ export default function JobDetailPage() {
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10))
   const [savingPayment, setSavingPayment] = useState(false)
 
+  const [photos, setPhotos] = useState<JobPhoto[]>([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+
   useEffect(() => {
-    if (id) getPayments(id).then(setPayments).catch(() => {})
+    if (id) {
+      getPayments(id).then(setPayments).catch(() => {})
+      getPhotos(id).then(setPhotos).catch(() => {})
+    }
   }, [id])
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite re-subir el mismo archivo
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecciona una imagen')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen debe pesar menos de 5 MB')
+      return
+    }
+    setUploadingPhoto(true)
+    try {
+      await uploadPhoto(id, file)
+      setPhotos(await getPhotos(id))
+      toast.success('Foto agregada')
+    } catch {
+      toast.error('No se pudo subir la foto')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  const handleDeletePhoto = async (photo: JobPhoto) => {
+    try {
+      await deletePhoto(photo)
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id))
+    } catch {
+      toast.error('No se pudo eliminar la foto')
+    }
+  }
 
   const paymentsTotal = payments.reduce((s, p) => s + Number(p.amount), 0)
   const collected = (job ? Number(job.deposit) : 0) + paymentsTotal
@@ -817,6 +857,55 @@ export default function JobDetailPage() {
               }
             }}
           />
+        </CardContent>
+      </Card>
+
+      {/* Photos */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-primary" />
+              Fotos ({photos.length})
+            </h3>
+            <Button asChild variant="outline" size="sm" disabled={uploadingPhoto}>
+              <label className="cursor-pointer">
+                <Plus className="h-4 w-4 mr-1.5" />
+                {uploadingPhoto ? 'Subiendo...' : 'Agregar'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  disabled={uploadingPhoto}
+                />
+              </label>
+            </Button>
+          </div>
+          {photos.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Sin fotos. Agrega imágenes del antes/después.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((photo) => (
+                <div key={photo.id} className="relative aspect-square">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt="Foto del trabajo"
+                    className="w-full h-full object-cover rounded-lg border border-border"
+                  />
+                  <button
+                    onClick={() => handleDeletePhoto(photo)}
+                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"
+                    aria-label="Eliminar foto"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
