@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, Moon, Sun, Settings, Search } from 'lucide-react'
+import { LogOut, Moon, Sun, Settings, Search, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { useAuth } from '@/hooks/use-auth'
@@ -64,6 +64,12 @@ export function Header() {
                 <p className="text-xs text-muted-foreground truncate">{email}</p>
               </div>
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/materiales">
+                  <Package className="h-4 w-4 mr-2" />
+                  Materiales
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/configuracion">
                   <Settings className="h-4 w-4 mr-2" />

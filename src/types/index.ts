@@ -57,6 +57,19 @@ export interface Expense {
   updated_at: string
 }
 
+export interface Material {
+  id: string
+  user_id: string
+  name: string
+  unit?: string | null
+  price: number
+  stock: number
+  min_stock: number
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Notification {
   id: string
   user_id: string
