@@ -24,7 +24,7 @@ import { getPhotos, uploadPhoto, deletePhoto, type JobPhoto } from '@/services/p
 import { getJobMaterials, addJobMaterial, deleteJobMaterial, type JobMaterial } from '@/services/job-materials'
 import { getMaterials } from '@/services/materials'
 import { getExpenses } from '@/services/expenses'
-import type { Material } from '@/types'
+import type { Material, LineItem } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -217,16 +217,61 @@ export default function JobDetailPage() {
 
   const [warrantyUntil, setWarrantyUntil] = useState('')
   const [followupAt, setFollowupAt] = useState('')
+  const [lineItems, setLineItems] = useState<LineItem[]>([])
+  const [discount, setDiscount] = useState('0')
+  const [taxRate, setTaxRate] = useState('0')
 
-  // Sincroniza checklist, firma, garantía y seguimiento cuando el trabajo carga/cambia.
+  // Sincroniza checklist, firma, garantía, seguimiento y desglose al cargar/cambiar.
   useEffect(() => {
     if (job) {
       setChecklist(buildChecklist(job.checklist))
       setSignature(job.signature ?? null)
       setWarrantyUntil(job.warranty_until ?? '')
       setFollowupAt(job.followup_at ?? '')
+      setLineItems(job.line_items ?? [])
+      setDiscount(String(job.discount ?? 0))
+      setTaxRate(String(job.tax_rate ?? 0))
     }
   }, [job])
+
+  const itemsSubtotal = lineItems.reduce((s, it) => s + Number(it.quantity) * Number(it.unit_price), 0)
+  const discountNum = Number(discount) || 0
+  const taxNum = Number(taxRate) || 0
+  const itemsTaxable = Math.max(0, itemsSubtotal - discountNum)
+  const itemsTax = itemsTaxable * (taxNum / 100)
+  const itemsTotal = itemsTaxable + itemsTax
+
+  const persistBreakdown = async (items: LineItem[], disc: number, tax: number) => {
+    try {
+      await update({ line_items: items, discount: disc, tax_rate: tax })
+    } catch {
+      toast.error('No se pudo guardar el desglose')
+    }
+  }
+
+  const addLineItem = () => {
+    const next = [...lineItems, { description: '', quantity: 1, unit_price: 0 }]
+    setLineItems(next)
+  }
+
+  const updateLineItem = (i: number, patch: Partial<LineItem>) => {
+    setLineItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+  }
+
+  const removeLineItem = (i: number) => {
+    const next = lineItems.filter((_, idx) => idx !== i)
+    setLineItems(next)
+    persistBreakdown(next, discountNum, taxNum)
+  }
+
+  const applyTotalToPrice = async () => {
+    try {
+      await update({ price: itemsTotal, line_items: lineItems, discount: discountNum, tax_rate: taxNum })
+      toast.success('Total aplicado al precio del trabajo')
+    } catch {
+      toast.error('No se pudo aplicar el total')
+    }
+  }
 
   const saveWarranty = async (v: string) => {
     setWarrantyUntil(v)
@@ -650,17 +695,51 @@ export default function JobDetailPage() {
       doc.line(margin, y, pageW - margin, y)
       y += 6
 
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.setTextColor(79, 70, 229)
-      doc.text('PRECIO', margin, y)
-      y += 8
+      if (lineItems.length > 0) {
+        // Cotización detallada por líneas
+        const { default: autoTable } = await import('jspdf-autotable')
+        autoTable(doc, {
+          startY: y,
+          head: [['Descripción', 'Cant.', 'P. unit.', 'Importe']],
+          body: lineItems.map((it) => [
+            it.description || '—',
+            String(Number(it.quantity)),
+            formatCurrency(Number(it.unit_price)),
+            formatCurrency(Number(it.quantity) * Number(it.unit_price)),
+          ]),
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [99, 102, 241] },
+          margin: { left: margin, right: margin },
+        })
+        // @ts-expect-error lastAutoTable lo agrega el plugin
+        y = (doc.lastAutoTable?.finalY || y) + 6
 
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(14)
-      doc.setTextColor(22, 163, 74)
-      doc.text(formatCurrency(job.price), pageW - margin, y, { align: 'right' })
-      y += 10
+        const totRow = (label: string, value: string, bold = false, color?: [number, number, number]) => {
+          doc.setFont('helvetica', bold ? 'bold' : 'normal')
+          doc.setFontSize(bold ? 12 : 10)
+          doc.setTextColor(...(color || [80, 80, 80]))
+          doc.text(label, pageW - margin - 50, y)
+          doc.text(value, pageW - margin, y, { align: 'right' })
+          y += bold ? 8 : 6
+        }
+        totRow('Subtotal', formatCurrency(itemsSubtotal))
+        if (discountNum > 0) totRow('Descuento', `-${formatCurrency(discountNum)}`)
+        if (taxNum > 0) totRow(`Impuesto (${taxNum}%)`, formatCurrency(itemsTax))
+        totRow('TOTAL', formatCurrency(itemsTotal), true, [22, 163, 74])
+        y += 4
+      } else {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11)
+        doc.setTextColor(79, 70, 229)
+        doc.text('PRECIO', margin, y)
+        y += 8
+
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(14)
+        doc.setTextColor(22, 163, 74)
+        doc.text(formatCurrency(job.price), pageW - margin, y, { align: 'right' })
+        y += 10
+      }
 
       // Validity note
       doc.setFillColor(245, 245, 255)
@@ -1073,6 +1152,119 @@ export default function JobDetailPage() {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quote breakdown (line items) */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" />
+              Desglose de cotización
+            </h3>
+            <Button variant="ghost" size="sm" className="h-8" onClick={addLineItem}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Línea
+            </Button>
+          </div>
+
+          {lineItems.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Agrega líneas (mano de obra, materiales…) para una cotización detallada. Opcional.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {lineItems.map((it, i) => (
+                <div key={i} className="space-y-1.5 rounded-lg border border-border p-2">
+                  <div className="flex gap-1.5">
+                    <Input
+                      placeholder="Descripción"
+                      value={it.description}
+                      onChange={(e) => updateLineItem(i, { description: e.target.value })}
+                      onBlur={() => persistBreakdown(lineItems, discountNum, taxNum)}
+                      className="flex-1"
+                    />
+                    <button
+                      onClick={() => removeLineItem(i)}
+                      className="text-muted-foreground hover:text-destructive px-1"
+                      aria-label="Eliminar línea"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Cantidad"
+                      value={it.quantity}
+                      onChange={(e) => updateLineItem(i, { quantity: Number(e.target.value) })}
+                      onBlur={() => persistBreakdown(lineItems, discountNum, taxNum)}
+                    />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Precio unit."
+                      value={it.unit_price}
+                      onChange={(e) => updateLineItem(i, { unit_price: Number(e.target.value) })}
+                      onBlur={() => persistBreakdown(lineItems, discountNum, taxNum)}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="space-y-1">
+                  <Label className="text-xs">Descuento ($)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    onBlur={() => persistBreakdown(lineItems, Number(discount) || 0, taxNum)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Impuesto (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={taxRate}
+                    onChange={(e) => setTaxRate(e.target.value)}
+                    onBlur={() => persistBreakdown(lineItems, discountNum, Number(taxRate) || 0)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1 pt-1 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span><span>{formatCurrency(itemsSubtotal)}</span>
+                </div>
+                {discountNum > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Descuento</span><span>-{formatCurrency(discountNum)}</span>
+                  </div>
+                )}
+                {taxNum > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Impuesto ({taxNum}%)</span><span>{formatCurrency(itemsTax)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold">
+                  <span>Total</span><span className="text-green-600 dark:text-green-400">{formatCurrency(itemsTotal)}</span>
+                </div>
+              </div>
+
+              <Button variant="outline" size="sm" className="w-full" onClick={applyTotalToPrice}>
+                Aplicar total al precio
+              </Button>
             </div>
           )}
         </CardContent>
