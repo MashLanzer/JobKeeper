@@ -27,7 +27,7 @@ export default function ConfiguracionPage() {
   const [goalInput, setGoalInput] = useState('')
   const [savedGoal, setSavedGoal] = useState(0)
   const [business, setBusiness] = useState<BusinessSettings>({
-    name: '', phone: '', email: '', logo: '', income_goal: 0,
+    name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '',
   })
   const [savingBusiness, setSavingBusiness] = useState(false)
 
@@ -49,6 +49,7 @@ export default function ConfiguracionPage() {
             email: biz.email || '',
             logo: biz.logo || '',
             income_goal: legacyGoal ? Number(legacyGoal) : 0,
+            review_link: '',
           }
           try {
             await upsertSettings(migrated)
@@ -76,6 +77,7 @@ export default function ConfiguracionPage() {
         phone: business.phone.trim(),
         email: business.email.trim(),
         logo: business.logo || '',
+        review_link: (business.review_link || '').trim(),
       })
       toast.success('Datos del negocio guardados')
     } catch {
@@ -272,6 +274,16 @@ export default function ConfiguracionPage() {
               value={business.email}
               onChange={(e) => setBusiness((b) => ({ ...b, email: e.target.value }))}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bizReview" className="text-xs">Link de reseñas (Google)</Label>
+            <Input
+              id="bizReview"
+              placeholder="Ej: https://g.page/r/..."
+              value={business.review_link || ''}
+              onChange={(e) => setBusiness((b) => ({ ...b, review_link: e.target.value }))}
+            />
+            <p className="text-[10px] text-muted-foreground">Se envía al cliente al completar un trabajo.</p>
           </div>
           <Button onClick={handleSaveBusiness} size="sm" className="w-full" disabled={savingBusiness}>
             {savingBusiness ? 'Guardando...' : 'Guardar datos del negocio'}

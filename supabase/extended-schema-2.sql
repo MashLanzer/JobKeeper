@@ -18,6 +18,9 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS discount       DECIMAL(10,2) DEFAULT 0
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS tax_rate       DECIMAL(5,2)  DEFAULT 0;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS equipment_id   UUID;
 
+-- G9: link de reseñas (Google) en la configuración del negocio
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS review_link TEXT;
+
 -- ----------------------------------------------------------------------------
 -- 2) EQUIPOS / UNIDADES DEL CLIENTE (G1)
 -- ----------------------------------------------------------------------------

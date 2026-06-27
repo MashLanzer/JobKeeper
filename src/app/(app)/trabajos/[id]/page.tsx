@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation, Circle, ListChecks, ImageIcon, Plus, X } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation, Circle, ListChecks, ImageIcon, Plus, X, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -57,7 +57,7 @@ export default function JobDetailPage() {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [signature, setSignature] = useState<string | null>(null)
   const [settings, setSettings] = useState<BusinessSettings>({
-    name: '', phone: '', email: '', logo: '', income_goal: 0,
+    name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '',
   })
   const [payments, setPayments] = useState<Payment[]>([])
   const [showPayForm, setShowPayForm] = useState(false)
@@ -802,6 +802,25 @@ export default function JobDetailPage() {
     }
   }
 
+  const handleRequestReview = async () => {
+    const link = (settings.review_link || '').trim()
+    if (!link) {
+      toast.error('Configura tu link de reseñas en Configuración')
+      return
+    }
+    const text = `¡Gracias por tu preferencia! Si quedaste satisfecho con el servicio, déjanos una reseña aquí: ${link}`
+    const nav = navigator as Navigator
+    if (nav.share) {
+      try {
+        await nav.share({ text })
+      } catch {
+        // cancelado
+      }
+      return
+    }
+    window.open(link, '_blank')
+  }
+
   const handleDelete = async () => {
     try {
       await remove()
@@ -1485,6 +1504,12 @@ export default function JobDetailPage() {
           <ClipboardList className="h-4 w-4 mr-2" />
           Plantilla
         </Button>
+        {job.status === 'completado' && settings.review_link && (
+          <Button variant="outline" onClick={handleRequestReview} className="col-span-2 text-amber-600 border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950">
+            <Star className="h-4 w-4 mr-2" />
+            Pedir reseña al cliente
+          </Button>
+        )}
       </div>
     </div>
   )
