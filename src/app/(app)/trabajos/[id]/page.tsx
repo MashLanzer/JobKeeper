@@ -15,6 +15,7 @@ import { useJob } from '@/hooks/use-jobs'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { getBusinessInfo } from '@/lib/business'
 import { sharePdf } from '@/lib/share-pdf'
+import { nextFolio } from '@/lib/folio'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -46,10 +47,11 @@ export default function JobDetailPage() {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
+      const folio = nextFolio('recibo')
       doc.text(businessName, margin, 15)
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
-      doc.text('RECIBO DE TRABAJO', pageW - margin, 15, { align: 'right' })
+      doc.text(`RECIBO #${folio}`, pageW - margin, 15, { align: 'right' })
       if (contact) {
         doc.setFontSize(8)
         doc.text(contact, margin, 22)
@@ -216,10 +218,11 @@ export default function JobDetailPage() {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
+      const folio = nextFolio('cotizacion')
       doc.text(businessName, margin, 15)
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
-      doc.text('COTIZACIÓN', pageW - margin, 15, { align: 'right' })
+      doc.text(`COTIZACIÓN #${folio}`, pageW - margin, 15, { align: 'right' })
       if (contact) {
         doc.setFontSize(8)
         doc.text(contact, margin, 22)
@@ -546,6 +549,44 @@ export default function JobDetailPage() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Timeline */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            Historial
+          </h3>
+          <div className="space-y-3">
+            {[
+              { label: 'Creado', date: job.created_at, done: true },
+              { label: 'Programado', date: job.scheduled_at, done: !!job.scheduled_at },
+              {
+                label: 'Completado',
+                date: job.completed_at,
+                done: job.status === 'completado',
+              },
+            ].map((step, i, arr) => (
+              <div key={step.label} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${step.done ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                  />
+                  {i < arr.length - 1 && <span className="w-px flex-1 bg-border mt-1" />}
+                </div>
+                <div className="-mt-0.5 pb-1">
+                  <p className={`text-sm font-medium ${step.done ? '' : 'text-muted-foreground'}`}>
+                    {step.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {step.date ? formatDateTime(step.date) : 'Pendiente'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

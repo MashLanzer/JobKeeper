@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, Moon, Sun, Settings } from 'lucide-react'
+import { LogOut, Moon, Sun, Settings, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { useAuth } from '@/hooks/use-auth'
@@ -41,6 +41,12 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/buscar" aria-label="Buscar">
+              <Search className="h-5 w-5" />
+            </Link>
+          </Button>
+
           <NotificationBell />
 
           <DropdownMenu>

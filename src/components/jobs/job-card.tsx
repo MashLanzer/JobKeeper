@@ -5,6 +5,7 @@ import { MapPin, Clock, DollarSign, User } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { formatCurrency, formatDateTime, cn } from '@/lib/utils'
+import { categoryStyle } from '@/lib/categories'
 import type { Job } from '@/types'
 
 interface JobCardProps {
@@ -60,7 +61,12 @@ export function JobCard({ job }: JobCardProps) {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">{job.category}</p>
+              <span className={cn(
+                'inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-1',
+                categoryStyle(job.category).chip
+              )}>
+                {job.category}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <PaymentBadge price={job.price} deposit={job.deposit} />
