@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 import { getJobsByMonth } from '@/services/jobs'
-import { getExpensesByMonth } from '@/services/expenses'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { getExpensesByMonth, getFinanceSummary } from '@/services/expenses'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { getBusinessName } from '@/lib/business'
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -192,6 +193,87 @@ export default function ReportesPage() {
     }
   }
 
+  const exportMonthlySummaryPDF = async () => {
+    try {
+      setLoading(true)
+      const [summary, jobs] = await Promise.all([
+        getFinanceSummary(year, month),
+        getJobsByMonth(year, month),
+      ])
+
+      const businessName = getBusinessName()
+      const { default: jsPDF } = await import('jspdf')
+      const doc = new jsPDF()
+      const pageW = doc.internal.pageSize.getWidth()
+      const margin = 14
+
+      // Header band
+      doc.setFillColor(99, 102, 241)
+      doc.rect(0, 0, pageW, 26, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(businessName, margin, 16)
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Resumen mensual', pageW - margin, 16, { align: 'right' })
+
+      let y = 40
+      doc.setTextColor(30, 30, 30)
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`${MONTH_NAMES[month - 1]} ${year}`, margin, y)
+      y += 12
+
+      const completed = jobs.filter((j) => j.status === 'completado').length
+      const pending = jobs.filter((j) => j.status === 'pendiente' || j.status === 'en_progreso').length
+
+      const line = (label: string, value: string, color?: [number, number, number]) => {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(11)
+        doc.setTextColor(80, 80, 80)
+        doc.text(label, margin, y)
+        doc.setFont('helvetica', 'bold')
+        if (color) doc.setTextColor(...color)
+        else doc.setTextColor(30, 30, 30)
+        doc.text(value, pageW - margin, y, { align: 'right' })
+        y += 9
+      }
+
+      doc.setDrawColor(220, 220, 220)
+      line('Ingresos del mes', formatCurrency(summary.totalIncome), [22, 163, 74])
+      line('Gastos del mes', `-${formatCurrency(summary.totalExpenses)}`, [220, 38, 38])
+      doc.line(margin, y - 3, pageW - margin, y - 3)
+      line(
+        'Ganancia neta',
+        formatCurrency(summary.netProfit),
+        summary.netProfit >= 0 ? [22, 163, 74] : [220, 38, 38]
+      )
+      y += 4
+      doc.line(margin, y - 3, pageW - margin, y - 3)
+      line('Trabajos totales', String(jobs.length))
+      line('Completados', String(completed))
+      line('Pendientes / en progreso', String(pending))
+
+      doc.setFontSize(9)
+      doc.setTextColor(150, 150, 150)
+      doc.setFont('helvetica', 'normal')
+      doc.text(
+        `Generado el ${new Date().toLocaleDateString('es-ES', { dateStyle: 'long' })}`,
+        margin,
+        doc.internal.pageSize.getHeight() - 12
+      )
+
+      doc.save(`resumen-${year}-${String(month).padStart(2, '0')}.pdf`)
+      toast.success('Resumen descargado')
+    } catch (err) {
+      console.error(err)
+      toast.error('Error al generar el resumen')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6 page-transition">
       <PageHeader
@@ -209,6 +291,25 @@ export default function ReportesPage() {
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
+
+      {/* Monthly summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4 text-green-500" />
+            Resumen mensual
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Un PDF con ingresos, gastos, ganancia neta y conteo de trabajos de {MONTH_NAMES[month - 1]} {year}. Ideal para tu control o tu contador.
+          </p>
+          <Button onClick={exportMonthlySummaryPDF} disabled={loading} className="w-full">
+            <Download className="h-4 w-4 mr-2" />
+            Generar resumen PDF
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Jobs reports */}
       <Card>

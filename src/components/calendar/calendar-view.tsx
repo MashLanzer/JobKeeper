@@ -31,14 +31,58 @@ const STATUS_COLORS: Record<string, string> = {
   cancelado: 'bg-red-500',
 }
 
+const dateKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
 export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewProps) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [view, setView] = useState<'mes' | 'semana'>('mes')
 
   const today = new Date()
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month
 
+  const [weekStart, setWeekStart] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - d.getDay()) // retrocede al domingo
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+
   const daysInMonth = new Date(year, month, 0).getDate()
   const firstDayOfMonth = new Date(year, month - 1, 1).getDay()
+
+  const jobsByDate = useMemo(() => {
+    const map: Record<string, Job[]> = {}
+    jobs.forEach((job) => {
+      const ds = job.scheduled_at || job.created_at
+      if (!ds) return
+      const k = dateKey(new Date(ds))
+      if (!map[k]) map[k] = []
+      map[k].push(job)
+    })
+    return map
+  }, [jobs])
+
+  const weekDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(weekStart)
+        d.setDate(d.getDate() + i)
+        return d
+      }),
+    [weekStart]
+  )
+
+  const shiftWeek = (delta: number) => {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + delta * 7)
+    setWeekStart(d)
+    const mid = new Date(d)
+    mid.setDate(mid.getDate() + 3)
+    if (mid.getFullYear() !== year || mid.getMonth() + 1 !== month) {
+      onMonthChange(mid.getFullYear(), mid.getMonth() + 1)
+    }
+  }
 
   const jobsByDay = useMemo(() => {
     const map: Record<number, Job[]> = {}
@@ -88,6 +132,112 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
 
   return (
     <div className="space-y-4">
+      {/* View toggle */}
+      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+        <button
+          onClick={() => setView('mes')}
+          className={cn(
+            'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
+            view === 'mes' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'
+          )}
+        >
+          Mes
+        </button>
+        <button
+          onClick={() => setView('semana')}
+          className={cn(
+            'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
+            view === 'semana' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'
+          )}
+        >
+          Semana
+        </button>
+      </div>
+
+      {view === 'semana' ? (
+        <div className="space-y-3">
+          {/* Week navigation */}
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={() => shiftWeek(-1)}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <h2 className="text-sm font-semibold text-center">
+              {weekDays[0].getDate()} {MONTH_NAMES[weekDays[0].getMonth()].slice(0, 3)} —{' '}
+              {weekDays[6].getDate()} {MONTH_NAMES[weekDays[6].getMonth()].slice(0, 3)}
+            </h2>
+            <Button variant="ghost" size="icon" onClick={() => shiftWeek(1)}>
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Week day rows */}
+          <div className="space-y-2">
+            {weekDays.map((d) => {
+              const dayJobs = jobsByDate[dateKey(d)] || []
+              const isToday = dateKey(d) === dateKey(today)
+              return (
+                <div
+                  key={dateKey(d)}
+                  className={cn(
+                    'rounded-xl border p-3',
+                    isToday ? 'border-primary bg-primary/5' : 'border-border'
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={cn('text-sm font-semibold', isToday && 'text-primary')}>
+                      {DAYS_OF_WEEK[d.getDay()]} {d.getDate()}
+                    </span>
+                    {dayJobs.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {dayJobs.length} trabajo{dayJobs.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                  {dayJobs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin trabajos</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {dayJobs.map((job) => (
+                        <Link
+                          key={job.id}
+                          href={`/trabajos/${job.id}`}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={cn(
+                                'h-2 w-2 rounded-full flex-shrink-0',
+                                STATUS_COLORS[job.status] || 'bg-primary'
+                              )}
+                            />
+                            <span className="truncate">{job.title}</span>
+                          </div>
+                          <span className="text-xs font-medium text-green-500 flex-shrink-0">
+                            {formatCurrency(job.price)}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
+            {Object.entries(STATUS_COLORS).map(([status, color]) => (
+              <div key={status} className="flex items-center gap-1.5">
+                <span className={cn('h-2.5 w-2.5 rounded-full', color)} />
+                <span className="text-xs text-muted-foreground capitalize">
+                  {status === 'en_progreso' ? 'En progreso' : status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Month navigation */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={prevMonth}>
@@ -221,6 +371,8 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
           </div>
         ))}
       </div>
+      </>
+      )}
     </div>
   )
 }
