@@ -2,11 +2,13 @@ export interface BusinessInfo {
   name: string
   phone: string
   email: string
+  /** Logo como data URL (data:image/png;base64,...) para incrustar en los PDFs. */
+  logo?: string
 }
 
 const KEY = 'business_info'
 
-const EMPTY: BusinessInfo = { name: '', phone: '', email: '' }
+const EMPTY: BusinessInfo = { name: '', phone: '', email: '', logo: '' }
 
 export function getBusinessInfo(): BusinessInfo {
   if (typeof window === 'undefined') return { ...EMPTY }

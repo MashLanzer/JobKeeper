@@ -48,13 +48,25 @@ export default function JobDetailPage() {
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
       const folio = nextFolio('recibo')
-      doc.text(businessName, margin, 15)
+      let nameX = margin
+      if (business.logo) {
+        try {
+          const fmt = business.logo.substring(business.logo.indexOf('/') + 1, business.logo.indexOf(';')).toUpperCase()
+          doc.setFillColor(255, 255, 255)
+          doc.roundedRect(margin, 5, 18, 18, 2, 2, 'F')
+          doc.addImage(business.logo, fmt, margin + 1, 6, 16, 16)
+          nameX = margin + 22
+        } catch {
+          // logo inválido: se omite
+        }
+      }
+      doc.text(businessName, nameX, 15)
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.text(`RECIBO #${folio}`, pageW - margin, 15, { align: 'right' })
       if (contact) {
         doc.setFontSize(8)
-        doc.text(contact, margin, 22)
+        doc.text(contact, nameX, 22)
       }
 
       y = 40
@@ -219,13 +231,25 @@ export default function JobDetailPage() {
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
       const folio = nextFolio('cotizacion')
-      doc.text(businessName, margin, 15)
+      let nameX = margin
+      if (business.logo) {
+        try {
+          const fmt = business.logo.substring(business.logo.indexOf('/') + 1, business.logo.indexOf(';')).toUpperCase()
+          doc.setFillColor(255, 255, 255)
+          doc.roundedRect(margin, 5, 18, 18, 2, 2, 'F')
+          doc.addImage(business.logo, fmt, margin + 1, 6, 16, 16)
+          nameX = margin + 22
+        } catch {
+          // logo inválido: se omite
+        }
+      }
+      doc.text(businessName, nameX, 15)
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.text(`COTIZACIÓN #${folio}`, pageW - margin, 15, { align: 'right' })
       if (contact) {
         doc.setFontSize(8)
-        doc.text(contact, margin, 22)
+        doc.text(contact, nameX, 22)
       }
 
       y = 40

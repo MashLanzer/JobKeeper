@@ -42,8 +42,27 @@ export default function ConfiguracionPage() {
       name: business.name.trim(),
       phone: business.phone.trim(),
       email: business.email.trim(),
+      logo: business.logo || '',
     })
     toast.success('Datos del negocio guardados')
+  }
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecciona una imagen')
+      return
+    }
+    if (file.size > 1024 * 1024) {
+      toast.error('La imagen debe pesar menos de 1 MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      setBusiness((b) => ({ ...b, logo: reader.result as string }))
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleSaveGoal = () => {
@@ -124,6 +143,42 @@ export default function ConfiguracionPage() {
           <p className="text-xs text-muted-foreground">
             Aparecen en los recibos y cotizaciones PDF que envías a tus clientes.
           </p>
+          <div className="space-y-2">
+            <Label className="text-xs">Logo</Label>
+            <div className="flex items-center gap-3">
+              {business.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={business.logo}
+                  alt="Logo"
+                  className="h-14 w-14 rounded-lg object-contain border border-border bg-white"
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground">
+                  <Building2 className="h-5 w-5" />
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <Button asChild variant="outline" size="sm">
+                  <label className="cursor-pointer">
+                    {business.logo ? 'Cambiar' : 'Subir logo'}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                  </label>
+                </Button>
+                {business.logo && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive h-7"
+                    onClick={() => setBusiness((b) => ({ ...b, logo: '' }))}
+                  >
+                    Quitar
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">PNG o JPG, máximo 1 MB. Recuerda guardar.</p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="bizName" className="text-xs">Nombre del negocio</Label>
             <Input

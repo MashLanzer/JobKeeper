@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 import { getJobsByMonth } from '@/services/jobs'
 import { getExpensesByMonth, getFinanceSummary } from '@/services/expenses'
+import { getYearReport } from '@/services/reports'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { getBusinessName } from '@/lib/business'
 
@@ -274,6 +275,92 @@ export default function ReportesPage() {
     }
   }
 
+  const exportYearReportPDF = async () => {
+    try {
+      setLoading(true)
+      const report = await getYearReport(year)
+
+      const businessName = getBusinessName()
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
+      const doc = new jsPDF()
+      const pageW = doc.internal.pageSize.getWidth()
+      const margin = 14
+
+      doc.setFillColor(99, 102, 241)
+      doc.rect(0, 0, pageW, 26, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(businessName, margin, 16)
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Reporte anual ${year}`, pageW - margin, 16, { align: 'right' })
+
+      // Totales
+      doc.setTextColor(30, 30, 30)
+      doc.setFontSize(11)
+      let y = 38
+      doc.setFont('helvetica', 'bold')
+      doc.text(
+        `Ingresos: ${formatCurrency(report.totalIncome)}   ·   Gastos: ${formatCurrency(report.totalExpenses)}   ·   Neto: ${formatCurrency(report.netProfit)}`,
+        margin,
+        y
+      )
+      y += 4
+
+      // Tabla mes a mes
+      autoTable(doc, {
+        startY: y + 4,
+        head: [['Mes', 'Ingresos', 'Gastos', 'Neto']],
+        body: report.months.map((m) => [
+          MONTH_NAMES[m.month - 1],
+          formatCurrency(m.income),
+          formatCurrency(m.expenses),
+          formatCurrency(m.net),
+        ]),
+        foot: [[
+          'TOTAL',
+          formatCurrency(report.totalIncome),
+          formatCurrency(report.totalExpenses),
+          formatCurrency(report.netProfit),
+        ]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [99, 102, 241] },
+        footStyles: { fillColor: [238, 238, 248], textColor: [30, 30, 30], fontStyle: 'bold' },
+      })
+
+      // Ingresos por categoría
+      const categories = Object.entries(report.incomeByCategory).sort(([, a], [, b]) => b - a)
+      if (categories.length > 0) {
+        // @ts-expect-error lastAutoTable lo agrega el plugin
+        const afterY = (doc.lastAutoTable?.finalY || y) + 10
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(12)
+        doc.text('Ingresos por categoría', margin, afterY)
+        autoTable(doc, {
+          startY: afterY + 4,
+          head: [['Categoría', 'Ingresos', '%']],
+          body: categories.map(([cat, amount]) => [
+            cat,
+            formatCurrency(amount),
+            report.totalIncome > 0 ? `${Math.round((amount / report.totalIncome) * 100)}%` : '0%',
+          ]),
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [99, 102, 241] },
+        })
+      }
+
+      doc.save(`reporte-anual-${year}.pdf`)
+      toast.success('Reporte anual descargado')
+    } catch (err) {
+      console.error(err)
+      toast.error('Error al generar el reporte anual')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6 page-transition">
       <PageHeader
@@ -307,6 +394,25 @@ export default function ReportesPage() {
           <Button onClick={exportMonthlySummaryPDF} disabled={loading} className="w-full">
             <Download className="h-4 w-4 mr-2" />
             Generar resumen PDF
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Annual report */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4 text-indigo-500" />
+            Reporte anual {year}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Análisis del año completo: ingresos y gastos mes a mes, totales y rentabilidad por categoría.
+          </p>
+          <Button onClick={exportYearReportPDF} disabled={loading} variant="outline" className="w-full">
+            <Download className="h-4 w-4 mr-2" />
+            Generar reporte anual PDF
           </Button>
         </CardContent>
       </Card>
