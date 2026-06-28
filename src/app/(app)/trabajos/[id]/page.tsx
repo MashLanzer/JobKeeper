@@ -16,6 +16,7 @@ import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { getSettings, type BusinessSettings } from '@/services/settings'
 import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
+import { haptic } from '@/lib/haptics'
 import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
 import { createTemplate } from '@/services/templates'
@@ -788,6 +789,7 @@ export default function JobDetailPage() {
       })
       setPayments((prev) => [created, ...prev])
       await update({ paid_at: new Date().toISOString() })
+      haptic('success')
       toast.success('Trabajo marcado como cobrado')
     } catch {
       toast.error('Error al actualizar el cobro')
@@ -805,6 +807,7 @@ export default function JobDetailPage() {
         patch.completed_at = new Date().toISOString()
       }
       await update(patch)
+      haptic(status === 'completado' ? 'success' : 'medium')
       toast.success(status === 'completado' ? 'Trabajo completado' : 'Trabajo iniciado')
     } catch {
       toast.error('Error al cambiar el estado')

@@ -12,6 +12,8 @@
   "dependencies": {
     "@capacitor/app": "^7.1.2",
     "@capacitor/browser": "^7.0.5",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",

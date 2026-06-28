@@ -27,6 +27,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Sincroniza la barra de estado nativa con el tema (solo en la app).
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core')
+        if (!Capacitor.isNativePlatform()) return
+        const { StatusBar, Style } = await import('@capacitor/status-bar')
+        await StatusBar.setStyle({ style: theme === 'dark' ? Style.Dark : Style.Light })
+        await StatusBar.setBackgroundColor({ color: theme === 'dark' ? '#0e1729' : '#ffffff' }).catch(() => {})
+      } catch {
+        // plugin no disponible
+      }
+    })()
+  }, [theme])
+
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme)
     localStorage.setItem('theme', newTheme)
