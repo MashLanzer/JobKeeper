@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { categoryStyle } from '@/lib/categories'
 import Link from 'next/link'
 import type { Job } from '@/types'
 
@@ -37,6 +38,10 @@ const dateKey = (d: Date) =>
 export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewProps) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [view, setView] = useState<'mes' | 'semana'>('mes')
+  const [colorBy, setColorBy] = useState<'estado' | 'categoria'>('estado')
+
+  const dotColor = (job: Job) =>
+    colorBy === 'categoria' ? categoryStyle(job.category).dot : STATUS_COLORS[job.status] || 'bg-primary'
 
   const today = new Date()
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month
@@ -154,6 +159,17 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
         </button>
       </div>
 
+      {/* Color toggle */}
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs text-muted-foreground">Color por:</span>
+        <button
+          onClick={() => setColorBy((v) => (v === 'estado' ? 'categoria' : 'estado'))}
+          className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted hover:bg-muted/70 transition-colors capitalize"
+        >
+          {colorBy}
+        </button>
+      </div>
+
       {view === 'semana' ? (
         <div className="space-y-3">
           {/* Week navigation */}
@@ -205,10 +221,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span
-                              className={cn(
-                                'h-2 w-2 rounded-full flex-shrink-0',
-                                STATUS_COLORS[job.status] || 'bg-primary'
-                              )}
+                              className={cn('h-2 w-2 rounded-full flex-shrink-0', dotColor(job))}
                             />
                             <span className="truncate">{job.title}</span>
                           </div>
@@ -300,10 +313,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                     {dayJobs.slice(0, 3).map((job, i) => (
                       <span
                         key={i}
-                        className={cn(
-                          'block h-1.5 w-1.5 rounded-full',
-                          STATUS_COLORS[job.status] || 'bg-primary'
-                        )}
+                        className={cn('block h-1.5 w-1.5 rounded-full', dotColor(job))}
                       />
                     ))}
                   </div>
@@ -362,14 +372,18 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
-        {Object.entries(STATUS_COLORS).map(([status, color]) => (
-          <div key={status} className="flex items-center gap-1.5">
-            <span className={cn('h-2.5 w-2.5 rounded-full', color)} />
-            <span className="text-xs text-muted-foreground capitalize">
-              {status === 'en_progreso' ? 'En progreso' : status}
-            </span>
-          </div>
-        ))}
+        {colorBy === 'estado' ? (
+          Object.entries(STATUS_COLORS).map(([status, color]) => (
+            <div key={status} className="flex items-center gap-1.5">
+              <span className={cn('h-2.5 w-2.5 rounded-full', color)} />
+              <span className="text-xs text-muted-foreground capitalize">
+                {status === 'en_progreso' ? 'En progreso' : status}
+              </span>
+            </div>
+          ))
+        ) : (
+          <span className="text-xs text-muted-foreground">Puntos coloreados por categoría</span>
+        )}
       </div>
       </>
       )}

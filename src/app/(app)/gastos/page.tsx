@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Receipt, Repeat } from 'lucide-react'
+import { Plus, Receipt, Repeat, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -16,11 +17,16 @@ import { formatCurrency } from '@/lib/utils'
 
 export default function GastosPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [search, setSearch] = useState('')
   const { expenses, loading, error, remove } = useExpenses(
     categoryFilter !== 'all' ? { category: categoryFilter } : undefined
   )
 
-  const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const visibleExpenses = search.trim()
+    ? expenses.filter((e) => e.description.toLowerCase().includes(search.trim().toLowerCase()))
+    : expenses
+
+  const totalAmount = visibleExpenses.reduce((sum, e) => sum + e.amount, 0)
 
   const handleDelete = async (id: string) => {
     try {
@@ -54,6 +60,16 @@ export default function GastosPage() {
         }
       />
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar gasto..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       <Select
         value={categoryFilter}
         onValueChange={setCategoryFilter}
@@ -73,23 +89,25 @@ export default function GastosPage() {
         <ListSkeleton count={4} />
       ) : error ? (
         <p className="text-sm text-destructive text-center py-8">{error}</p>
-      ) : expenses.length === 0 ? (
+      ) : visibleExpenses.length === 0 ? (
         <EmptyState
           icon={Receipt}
           title="Sin gastos"
-          description="Registra tus gastos para llevar un control de tus finanzas"
+          description={search ? 'No se encontraron gastos con esa búsqueda' : 'Registra tus gastos para llevar un control de tus finanzas'}
           action={
-            <Button asChild>
-              <Link href="/gastos/nuevo">
-                <Plus className="h-4 w-4 mr-2" />
-                Registrar gasto
-              </Link>
-            </Button>
+            !search ? (
+              <Button asChild>
+                <Link href="/gastos/nuevo">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Registrar gasto
+                </Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (
         <div className="flex flex-col gap-4">
-          {expenses.map((expense) => (
+          {visibleExpenses.map((expense) => (
             <ExpenseCard
               key={expense.id}
               expense={expense}
