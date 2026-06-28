@@ -45,7 +45,7 @@ function isOverdue(job: Job) {
 export function JobCard({ job }: JobCardProps) {
   const overdue = isOverdue(job)
   return (
-    <Link href={`/trabajos/${job.id}`}>
+    <Link href={`/trabajos/${job.id}`} className="block">
       <Card className={cn(
         'hover:border-primary/50 transition-colors active:scale-[0.99]',
         overdue && 'border-destructive/40 bg-destructive/[0.02]'

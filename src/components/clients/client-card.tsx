@@ -13,7 +13,7 @@ interface ClientCardProps {
 
 export function ClientCard({ client }: ClientCardProps) {
   return (
-    <Link href={`/clientes/${client.id}`}>
+    <Link href={`/clientes/${client.id}`} className="block">
       <Card className="hover:border-primary/50 transition-colors active:scale-[0.99]">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">

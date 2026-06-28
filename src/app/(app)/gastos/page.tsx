@@ -80,7 +80,7 @@ export default function GastosPage() {
           }
         />
       ) : (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-4">
           {expenses.map((expense) => (
             <ExpenseCard
               key={expense.id}

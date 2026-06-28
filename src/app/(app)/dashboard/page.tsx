@@ -274,9 +274,9 @@ export default function DashboardPage() {
             <CalendarDays className="h-4 w-4 text-primary" />
             Hoy ({todayJobs.length})
           </h2>
-          <div className="space-y-4">
+          <div className="flex flex-col gap-3">
             {todayJobs.map((job) => (
-              <Link key={job.id} href={`/trabajos/${job.id}`}>
+              <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
                 <Card className="hover:border-primary/50 transition-colors">
                   <CardContent className="p-3 flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">

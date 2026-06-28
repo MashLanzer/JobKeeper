@@ -108,7 +108,7 @@ export default function ClientesPage() {
           }
         />
       ) : (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-4">
           {filtered.map((client) => (
             <ClientCard key={client.id} client={client} />
           ))}

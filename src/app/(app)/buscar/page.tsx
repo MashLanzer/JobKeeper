@@ -108,7 +108,7 @@ export default function BuscarPage() {
               </h2>
               <div className="space-y-4">
                 {jobs.map((job) => (
-                  <Link key={job.id} href={`/trabajos/${job.id}`}>
+                  <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
                     <Card className="hover:border-primary/50 transition-colors">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -140,7 +140,7 @@ export default function BuscarPage() {
               </h2>
               <div className="space-y-4">
                 {clients.map((client) => (
-                  <Link key={client.id} href={`/clientes/${client.id}`}>
+                  <Link key={client.id} href={`/clientes/${client.id}`} className="block">
                     <Card className="hover:border-primary/50 transition-colors">
                       <CardContent className="p-3 flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold flex-shrink-0">
@@ -170,7 +170,7 @@ export default function BuscarPage() {
               </h2>
               <div className="space-y-4">
                 {expenses.map((expense) => (
-                  <Link key={expense.id} href="/gastos">
+                  <Link key={expense.id} href="/gastos" className="block">
                     <Card className="hover:border-primary/50 transition-colors">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
