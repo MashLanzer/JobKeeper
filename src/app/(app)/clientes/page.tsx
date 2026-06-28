@@ -10,16 +10,31 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import { ClientCard } from '@/components/clients/client-card'
 import { useClients } from '@/hooks/use-clients'
+import { cn } from '@/lib/utils'
+import type { ClientType } from '@/types'
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'todos' | ClientType>('todos')
   const { clients, loading, error } = useClients(search || undefined)
+
+  // Trata los clientes sin tipo como "cliente".
+  const filtered = clients.filter((c) => {
+    if (filter === 'todos') return true
+    return (c.type || 'cliente') === filter
+  })
+
+  const tabs: { value: 'todos' | ClientType; label: string }[] = [
+    { value: 'todos', label: 'Todos' },
+    { value: 'cliente', label: 'Clientes' },
+    { value: 'contratista', label: 'Contratistas' },
+  ]
 
   return (
     <div className="space-y-6 page-transition">
       <PageHeader
         title="Clientes"
-        description={`${clients.length} cliente${clients.length !== 1 ? 's' : ''}`}
+        description={`${filtered.length} ${filter === 'contratista' ? 'contratista' : 'cliente'}${filtered.length !== 1 ? 's' : ''}`}
         action={
           <Button asChild size="sm">
             <Link href="/clientes/nuevo">
@@ -50,33 +65,51 @@ export default function ClientesPage() {
         )}
       </div>
 
+      {/* Type filter */}
+      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setFilter(t.value)}
+            className={cn(
+              'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
+              filter === t.value ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <ListSkeleton count={4} />
       ) : error ? (
         <p className="text-sm text-destructive text-center py-8">{error}</p>
-      ) : clients.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="Sin clientes"
+          title={filter === 'contratista' ? 'Sin contratistas' : 'Sin clientes'}
           description={
             search
-              ? 'No se encontraron clientes con esa búsqueda'
-              : 'Agrega tu primer cliente para comenzar a organizarte'
+              ? 'No se encontraron resultados con esa búsqueda'
+              : filter === 'todos'
+                ? 'Agrega tu primer cliente para comenzar a organizarte'
+                : `Aún no tienes ${filter === 'contratista' ? 'contratistas' : 'clientes'} en esta categoría`
           }
           action={
             !search ? (
               <Button asChild>
                 <Link href="/clientes/nuevo">
                   <Plus className="h-4 w-4 mr-2" />
-                  Agregar cliente
+                  Agregar
                 </Link>
               </Button>
             ) : undefined
           }
         />
       ) : (
-        <div className="space-y-5">
-          {clients.map((client) => (
+        <div className="space-y-6">
+          {filtered.map((client) => (
             <ClientCard key={client.id} client={client} />
           ))}
         </div>

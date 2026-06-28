@@ -21,6 +21,9 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS equipment_id   UUID;
 -- G9: link de reseñas (Google) en la configuración del negocio
 ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS review_link TEXT;
 
+-- Tipo de cliente: "cliente" (tú le haces el trabajo) o "contratista" (te contrata)
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'cliente';
+
 -- ----------------------------------------------------------------------------
 -- 2) EQUIPOS / UNIDADES DEL CLIENTE (G1)
 -- ----------------------------------------------------------------------------

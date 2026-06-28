@@ -136,7 +136,7 @@ export default function MaterialesPage() {
           }
         />
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {materials.map((m) => {
             const low = Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0
             return (

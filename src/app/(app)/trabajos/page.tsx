@@ -58,7 +58,7 @@ export default function TrabajosPage() {
           }
         />
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {jobs.map((job) => (
             <JobCard key={job.id} job={job} />
           ))}

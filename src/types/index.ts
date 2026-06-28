@@ -1,6 +1,8 @@
 export type JobStatus = 'pendiente' | 'en_progreso' | 'completado' | 'cancelado'
 export type NotificationType = 'info' | 'warning' | 'success' | 'error'
 
+export type ClientType = 'cliente' | 'contratista'
+
 export interface Client {
   id: string
   user_id: string
@@ -9,11 +11,17 @@ export interface Client {
   email?: string
   address?: string
   notes?: string
+  type?: ClientType | null
   maintenance_months?: number | null
   last_service_date?: string | null
   created_at: string
   updated_at: string
 }
+
+export const CLIENT_TYPES: { value: ClientType; label: string }[] = [
+  { value: 'cliente', label: 'Cliente' },
+  { value: 'contratista', label: 'Contratista' },
+]
 
 export interface Job {
   id: string

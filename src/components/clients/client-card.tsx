@@ -23,7 +23,14 @@ export function ClientCard({ client }: ClientCardProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
+                {client.type === 'contratista' && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 whitespace-nowrap flex-shrink-0">
+                    Contratista
+                  </span>
+                )}
+              </div>
 
               <div className="mt-1 space-y-0.5">
                 {client.phone && (
