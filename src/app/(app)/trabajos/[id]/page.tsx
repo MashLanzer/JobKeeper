@@ -29,6 +29,7 @@ import type { Material, LineItem } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PAYMENT_METHODS } from '@/types'
 
 // Descarga una imagen remota y la convierte a data URL para incrustarla en el PDF.
@@ -939,6 +940,15 @@ export default function JobDetailPage() {
         </div>
       )}
 
+      {/* Tabbed sections */}
+      <Tabs defaultValue="detalles" className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="detalles" className="flex-1">Detalles</TabsTrigger>
+          <TabsTrigger value="servicio" className="flex-1">Servicio</TabsTrigger>
+          <TabsTrigger value="cobro" className="flex-1">Cobro</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="detalles" className="flex flex-col gap-6 mt-4">
       {/* Main info */}
       <Card>
         <CardContent className="p-4 space-y-4">
@@ -1094,6 +1104,9 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
+        </TabsContent>
+
+        <TabsContent value="servicio" className="flex flex-col gap-6 mt-4">
       {/* Service checklist */}
       <Card>
         <CardContent className="p-4">
@@ -1206,6 +1219,9 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
+        </TabsContent>
+
+        <TabsContent value="cobro" className="flex flex-col gap-6 mt-4">
       {/* Quote breakdown (line items) */}
       <Card>
         <CardContent className="p-4">
@@ -1509,6 +1525,9 @@ export default function JobDetailPage() {
           )}
         </CardContent>
       </Card>
+
+        </TabsContent>
+      </Tabs>
 
       {/* Actions */}
       <div className="grid grid-cols-2 gap-2">
