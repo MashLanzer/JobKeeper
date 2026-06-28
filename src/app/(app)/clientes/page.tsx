@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import { ClientCard } from '@/components/clients/client-card'
+import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { useClients } from '@/hooks/use-clients'
 import { cn } from '@/lib/utils'
 import type { ClientType } from '@/types'
@@ -16,7 +17,7 @@ import type { ClientType } from '@/types'
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'todos' | ClientType>('todos')
-  const { clients, loading, error } = useClients(search || undefined)
+  const { clients, loading, error, refetch } = useClients(search || undefined)
 
   // Trata los clientes sin tipo como "cliente".
   const filtered = clients.filter((c) => {
@@ -31,6 +32,7 @@ export default function ClientesPage() {
   ]
 
   return (
+    <PullToRefresh onRefresh={refetch}>
     <div className="space-y-6 page-transition">
       <PageHeader
         title="Clientes"
@@ -115,5 +117,6 @@ export default function ClientesPage() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   )
 }

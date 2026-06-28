@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import { JobCard } from '@/components/jobs/job-card'
 import { JobFiltersBar } from '@/components/jobs/job-filters'
+import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useJobs } from '@/hooks/use-jobs'
 import type { JobFilters } from '@/services/jobs'
@@ -18,7 +19,7 @@ type SortKey = 'reciente' | 'precio' | 'fecha'
 export default function TrabajosPage() {
   const [filters, setFilters] = useState<JobFilters>({})
   const [sort, setSort] = useState<SortKey>('reciente')
-  const { jobs, loading, error } = useJobs(filters)
+  const { jobs, loading, error, refetch } = useJobs(filters)
 
   // Ordena según el criterio elegido; los urgentes siempre quedan primero.
   const sortedJobs = [...jobs].sort((a, b) => {
@@ -35,6 +36,7 @@ export default function TrabajosPage() {
   })
 
   return (
+    <PullToRefresh onRefresh={refetch}>
     <div className="space-y-6 page-transition">
       <PageHeader
         title="Trabajos"
@@ -99,5 +101,6 @@ export default function TrabajosPage() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   )
 }
