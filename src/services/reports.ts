@@ -22,6 +22,58 @@ export interface YearReport {
  * y desglose de ingresos por categoría. Hace solo 2 consultas y agrega en
  * memoria para ser eficiente.
  */
+export interface BusinessStats {
+  avgTicket: number
+  topCategory: string | null
+  topClient: { name: string; total: number } | null
+  avgDaysToCollect: number | null
+  completedCount: number
+}
+
+export async function getBusinessStats(): Promise<BusinessStats> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('jobs')
+    .select('price, category, status, completed_at, paid_at, client:clients(name)')
+
+  const jobs = (data || []) as Array<{
+    price: number
+    category: string
+    status: string
+    completed_at: string | null
+    paid_at: string | null
+    client: { name: string } | { name: string }[] | null
+  }>
+
+  const completed = jobs.filter((j) => j.status === 'completado')
+  const avgTicket = completed.length
+    ? completed.reduce((s, j) => s + Number(j.price), 0) / completed.length
+    : 0
+
+  const catCount: Record<string, number> = {}
+  for (const j of jobs) catCount[j.category] = (catCount[j.category] || 0) + 1
+  const topCategory = Object.entries(catCount).sort(([, a], [, b]) => b - a)[0]?.[0] || null
+
+  const clientTotals: Record<string, number> = {}
+  for (const j of completed) {
+    const c = Array.isArray(j.client) ? j.client[0] : j.client
+    const name = c?.name
+    if (name) clientTotals[name] = (clientTotals[name] || 0) + Number(j.price)
+  }
+  const topEntry = Object.entries(clientTotals).sort(([, a], [, b]) => b - a)[0]
+  const topClient = topEntry ? { name: topEntry[0], total: topEntry[1] } : null
+
+  const withBoth = completed.filter((j) => j.completed_at && j.paid_at)
+  const avgDaysToCollect = withBoth.length
+    ? withBoth.reduce(
+        (s, j) => s + (new Date(j.paid_at as string).getTime() - new Date(j.completed_at as string).getTime()) / 86400000,
+        0
+      ) / withBoth.length
+    : null
+
+  return { avgTicket, topCategory, topClient, avgDaysToCollect, completedCount: completed.length }
+}
+
 export async function getYearReport(year: number): Promise<YearReport> {
   const supabase = createClient()
 

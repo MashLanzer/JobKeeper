@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 import { getJobsByMonth } from '@/services/jobs'
 import { getExpensesByMonth, getFinanceSummary } from '@/services/expenses'
-import { getYearReport } from '@/services/reports'
+import { getYearReport, getBusinessStats, type BusinessStats } from '@/services/reports'
 import { getSettings, businessNameOf } from '@/services/settings'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -23,9 +23,11 @@ export default function ReportesPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [loading, setLoading] = useState(false)
   const [businessName, setBusinessName] = useState('WorkLedger')
+  const [stats, setStats] = useState<BusinessStats | null>(null)
 
   useEffect(() => {
     getSettings().then((s) => setBusinessName(businessNameOf(s))).catch(() => {})
+    getBusinessStats().then(setStats).catch(() => {})
   }, [])
 
   const prevMonth = () => {
@@ -381,6 +383,41 @@ export default function ReportesPage() {
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
+
+      {/* Advanced stats */}
+      {stats && stats.completedCount > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              Estadísticas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Ticket promedio</p>
+              <p className="text-lg font-bold">{formatCurrency(stats.avgTicket)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Días para cobrar</p>
+              <p className="text-lg font-bold">
+                {stats.avgDaysToCollect !== null ? `${Math.round(stats.avgDaysToCollect)} días` : '—'}
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Categoría más frecuente</p>
+              <p className="text-sm font-semibold truncate">{stats.topCategory || '—'}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Cliente más rentable</p>
+              <p className="text-sm font-semibold truncate">{stats.topClient?.name || '—'}</p>
+              {stats.topClient && (
+                <p className="text-xs text-green-600 dark:text-green-400">{formatCurrency(stats.topClient.total)}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Monthly summary */}
       <Card>
