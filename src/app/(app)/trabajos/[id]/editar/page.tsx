@@ -31,7 +31,8 @@ export default function EditarTrabajoPage() {
         completed_at: data.status === 'completado' ? completedAt : null,
       })
       toast.success('Trabajo actualizado')
-      router.push(`/trabajos/${id}`)
+      // replace (no push): así "atrás" desde el detalle no vuelve al formulario
+      router.replace(`/trabajos/${id}`)
     } catch {
       toast.error('Error al actualizar el trabajo')
     }

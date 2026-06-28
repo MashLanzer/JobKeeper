@@ -17,7 +17,7 @@ export default function NuevoClientePage() {
     try {
       const client = await create(data)
       toast.success('Cliente creado exitosamente')
-      router.push(`/clientes/${client.id}`)
+      router.replace(`/clientes/${client.id}`)
     } catch {
       toast.error('Error al crear el cliente')
     }

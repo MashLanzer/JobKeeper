@@ -61,7 +61,7 @@ export default function NuevoTrabajoPage() {
         completed_at: null,
       })
       toast.success('Trabajo creado exitosamente')
-      router.push(`/trabajos/${job.id}`)
+      router.replace(`/trabajos/${job.id}`)
     } catch {
       toast.error('Error al crear el trabajo')
     }
