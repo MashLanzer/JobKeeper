@@ -415,6 +415,12 @@ export default function ReportesPage() {
                 <p className="text-xs text-green-600 dark:text-green-400">{formatCurrency(stats.topClient.total)}</p>
               )}
             </div>
+            {stats.quoteConversion !== null && (
+              <div className="rounded-lg bg-muted/50 p-3 col-span-2">
+                <p className="text-xs text-muted-foreground">Conversión de cotizaciones</p>
+                <p className="text-lg font-bold">{Math.round(stats.quoteConversion)}%</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

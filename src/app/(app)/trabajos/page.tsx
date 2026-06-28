@@ -16,6 +16,13 @@ export default function TrabajosPage() {
   const [filters, setFilters] = useState<JobFilters>({})
   const { jobs, loading, error } = useJobs(filters)
 
+  // Urgentes primero (mantiene el orden original dentro de cada grupo).
+  const sortedJobs = [...jobs].sort((a, b) => {
+    const ua = a.priority === 'urgente' ? 0 : 1
+    const ub = b.priority === 'urgente' ? 0 : 1
+    return ua - ub
+  })
+
   return (
     <div className="space-y-6 page-transition">
       <PageHeader
@@ -59,7 +66,7 @@ export default function TrabajosPage() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          {jobs.map((job) => (
+          {sortedJobs.map((job) => (
             <JobCard key={job.id} job={job} />
           ))}
         </div>

@@ -55,6 +55,11 @@ export function JobCard({ job }: JobCardProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <h3 className="font-semibold text-foreground truncate">{job.title}</h3>
+                {job.priority === 'urgente' && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white whitespace-nowrap flex-shrink-0">
+                    URGENTE
+                  </span>
+                )}
                 {overdue && (
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive whitespace-nowrap flex-shrink-0">
                     Vencido

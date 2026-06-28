@@ -49,6 +49,8 @@ export interface Job {
   discount?: number | null
   tax_rate?: number | null
   equipment_id?: string | null
+  priority?: 'normal' | 'urgente' | null
+  quote_status?: 'enviada' | 'aceptada' | 'rechazada' | null
   created_at: string
   updated_at: string
 }

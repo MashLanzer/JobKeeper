@@ -21,6 +21,7 @@ const jobSchema = z.object({
   category: z.string().min(1, 'La categoría es requerida'),
   client_id: z.string().optional(),
   equipment_id: z.string().optional(),
+  priority: z.enum(['normal', 'urgente']),
   scheduled_at: z.string().optional(),
   price: z.number({ invalid_type_error: 'Precio inválido' }).min(0, 'El precio no puede ser negativo'),
   deposit: z.number({ invalid_type_error: 'Anticipo inválido' }).min(0, 'El anticipo no puede ser negativo'),
@@ -55,6 +56,7 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
       category: initialData?.category || 'General/Varios',
       client_id: initialData?.client_id || undefined,
       equipment_id: initialData?.equipment_id || undefined,
+      priority: initialData?.priority || 'normal',
       scheduled_at: initialData?.scheduled_at
         ? new Date(initialData.scheduled_at).toISOString().slice(0, 16)
         : '',
@@ -79,6 +81,8 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
 
   const submit = handleSubmit((data) => {
     if (!data.equipment_id) delete data.equipment_id
+    // Solo enviamos priority si es "urgente" (evita romper si la columna no existe aún)
+    if (data.priority === 'normal') delete (data as Partial<JobFormData>).priority
     return onSubmit(data)
   })
 
@@ -130,6 +134,22 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
             {clients.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="priority">Prioridad</Label>
+        <Select
+          defaultValue={initialData?.priority || 'normal'}
+          onValueChange={(v) => setValue('priority', v as JobFormData['priority'])}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="urgente">Urgente</SelectItem>
           </SelectContent>
         </Select>
       </div>

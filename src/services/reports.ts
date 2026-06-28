@@ -28,13 +28,14 @@ export interface BusinessStats {
   topClient: { name: string; total: number } | null
   avgDaysToCollect: number | null
   completedCount: number
+  quoteConversion: number | null
 }
 
 export async function getBusinessStats(): Promise<BusinessStats> {
   const supabase = createClient()
   const { data } = await supabase
     .from('jobs')
-    .select('price, category, status, completed_at, paid_at, client:clients(name)')
+    .select('price, category, status, completed_at, paid_at, quote_status, client:clients(name)')
 
   const jobs = (data || []) as Array<{
     price: number
@@ -42,6 +43,7 @@ export async function getBusinessStats(): Promise<BusinessStats> {
     status: string
     completed_at: string | null
     paid_at: string | null
+    quote_status: string | null
     client: { name: string } | { name: string }[] | null
   }>
 
@@ -71,7 +73,11 @@ export async function getBusinessStats(): Promise<BusinessStats> {
       ) / withBoth.length
     : null
 
-  return { avgTicket, topCategory, topClient, avgDaysToCollect, completedCount: completed.length }
+  const quoted = jobs.filter((j) => j.quote_status)
+  const accepted = quoted.filter((j) => j.quote_status === 'aceptada').length
+  const quoteConversion = quoted.length ? (accepted / quoted.length) * 100 : null
+
+  return { avgTicket, topCategory, topClient, avgDaysToCollect, completedCount: completed.length, quoteConversion }
 }
 
 export async function getYearReport(year: number): Promise<YearReport> {

@@ -217,6 +217,7 @@ export default function JobDetailPage() {
 
   const [warrantyUntil, setWarrantyUntil] = useState('')
   const [followupAt, setFollowupAt] = useState('')
+  const [quoteStatus, setQuoteStatus] = useState('none')
   const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [discount, setDiscount] = useState('0')
   const [taxRate, setTaxRate] = useState('0')
@@ -228,6 +229,7 @@ export default function JobDetailPage() {
       setSignature(job.signature ?? null)
       setWarrantyUntil(job.warranty_until ?? '')
       setFollowupAt(job.followup_at ?? '')
+      setQuoteStatus(job.quote_status ?? 'none')
       setLineItems(job.line_items ?? [])
       setDiscount(String(job.discount ?? 0))
       setTaxRate(String(job.tax_rate ?? 0))
@@ -288,6 +290,15 @@ export default function JobDetailPage() {
       await update({ followup_at: v || null, followup_done: false })
     } catch {
       toast.error('No se pudo guardar el seguimiento')
+    }
+  }
+
+  const saveQuoteStatus = async (v: string) => {
+    setQuoteStatus(v)
+    try {
+      await update({ quote_status: v === 'none' ? null : (v as 'enviada' | 'aceptada' | 'rechazada') })
+    } catch {
+      toast.error('No se pudo guardar el estado de cotización')
     }
   }
 
@@ -1060,6 +1071,20 @@ export default function JobDetailPage() {
               <Label className="text-xs">Seguimiento</Label>
               <Input type="date" value={followupAt} onChange={(e) => saveFollowup(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-1.5 mt-3">
+            <Label className="text-xs">Estado de cotización</Label>
+            <Select value={quoteStatus} onValueChange={saveQuoteStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin cotización</SelectItem>
+                <SelectItem value="enviada">Enviada</SelectItem>
+                <SelectItem value="aceptada">Aceptada</SelectItem>
+                <SelectItem value="rechazada">Rechazada</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
