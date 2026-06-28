@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { JobStatusBadge } from '@/components/jobs/job-status-badge'
+import { StatusStepper } from '@/components/jobs/status-stepper'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useJob } from '@/hooks/use-jobs'
@@ -898,16 +898,18 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      {/* Status */}
-      <div className="flex items-center gap-2">
-        <JobStatusBadge status={job.status} />
-        {job.payment_method && (
-          <span className="text-xs text-muted-foreground capitalize flex items-center gap-1">
-            <CreditCard className="h-3 w-3" />
-            {job.payment_method}
-          </span>
-        )}
-      </div>
+      {/* Status stepper */}
+      <Card>
+        <CardContent className="p-4">
+          <StatusStepper status={job.status} />
+          {job.payment_method && (
+            <div className="flex items-center justify-center gap-1 mt-3 text-xs text-muted-foreground capitalize">
+              <CreditCard className="h-3 w-3" />
+              {job.payment_method}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick status actions */}
       {job.status !== 'completado' && job.status !== 'cancelado' && (

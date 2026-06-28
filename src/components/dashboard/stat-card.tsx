@@ -1,10 +1,14 @@
 import { LucideIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { CountUp } from '@/components/dashboard/count-up'
 
 interface StatCardProps {
   title: string
   value: string
+  /** Si se pasa, el número se anima desde 0 usando `format`. */
+  valueNumber?: number
+  format?: (n: number) => string
   subtitle?: string
   icon: LucideIcon
   trend?: 'up' | 'down' | 'neutral'
@@ -16,6 +20,8 @@ interface StatCardProps {
 export function StatCard({
   title,
   value,
+  valueNumber,
+  format,
   subtitle,
   icon: Icon,
   iconColor = 'text-primary',
@@ -31,7 +37,13 @@ export function StatCard({
         </div>
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-1">{title}</p>
-          <p className="text-xl font-bold text-foreground tracking-tight">{value}</p>
+          <p className="text-xl font-bold text-foreground tracking-tight">
+            {valueNumber !== undefined && format ? (
+              <CountUp value={valueNumber} format={format} />
+            ) : (
+              value
+            )}
+          </p>
           {subtitle && (
             <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
           )}

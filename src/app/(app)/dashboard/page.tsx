@@ -357,6 +357,8 @@ export default function DashboardPage() {
         <StatCard
           title="Ingresos del mes"
           value={formatCurrency(stats?.revenueThisMonth || 0)}
+          valueNumber={stats?.revenueThisMonth || 0}
+          format={formatCurrency}
           subtitle={revComparison}
           icon={DollarSign}
           iconColor="text-green-500"
@@ -365,6 +367,8 @@ export default function DashboardPage() {
         <StatCard
           title="Ganancia neta"
           value={formatCurrency(stats?.netProfitThisMonth || 0)}
+          valueNumber={stats?.netProfitThisMonth || 0}
+          format={formatCurrency}
           icon={TrendingDown}
           iconColor={(stats?.netProfitThisMonth || 0) >= 0 ? 'text-green-500' : 'text-destructive'}
           iconBg={(stats?.netProfitThisMonth || 0) >= 0 ? 'bg-green-500/10' : 'bg-destructive/10'}
@@ -372,6 +376,8 @@ export default function DashboardPage() {
         <StatCard
           title="Completados (mes)"
           value={String(stats?.completedThisMonth || 0)}
+          valueNumber={stats?.completedThisMonth || 0}
+          format={(n) => String(Math.round(n))}
           subtitle="trabajos completados"
           icon={Briefcase}
           iconColor="text-primary"
@@ -380,6 +386,8 @@ export default function DashboardPage() {
         <StatCard
           title="Pendientes"
           value={String(stats?.pendingJobs || 0)}
+          valueNumber={stats?.pendingJobs || 0}
+          format={(n) => String(Math.round(n))}
           subtitle="trabajos activos"
           icon={Clock}
           iconColor="text-yellow-500"
