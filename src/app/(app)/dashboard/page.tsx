@@ -189,7 +189,7 @@ export default function DashboardPage() {
 
       {/* Pending balance alert */}
       {(stats?.pendingBalance || 0) > 0 && (
-        <Link href="/trabajos" className="block">
+        <Link href="/cobranza" className="block">
           <div className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <div className="flex items-center gap-2.5">
               <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
