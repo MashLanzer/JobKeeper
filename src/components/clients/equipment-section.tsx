@@ -22,7 +22,7 @@ import {
   type EquipmentInput,
 } from '@/services/equipment'
 import { formatDate } from '@/lib/utils'
-import type { Equipment } from '@/types'
+import type { Equipment, Job } from '@/types'
 
 const EMPTY: EquipmentInput = {
   client_id: '',
@@ -36,7 +36,7 @@ const EMPTY: EquipmentInput = {
   notes: '',
 }
 
-export function EquipmentSection({ clientId }: { clientId: string }) {
+export function EquipmentSection({ clientId, jobs = [] }: { clientId: string; jobs?: Job[] }) {
   const [items, setItems] = useState<Equipment[]>([])
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Equipment | null>(null)
@@ -121,7 +121,16 @@ export function EquipmentSection({ clientId }: { clientId: string }) {
             Registra los equipos de A/C de este cliente (marca, modelo, serie).
           </p>
         ) : (
-          items.map((e) => (
+          items.map((e) => {
+            const services = jobs
+              .filter((j) => j.equipment_id === e.id)
+              .sort((a, b) => {
+                const da = new Date(a.scheduled_at || a.created_at).getTime()
+                const db = new Date(b.scheduled_at || b.created_at).getTime()
+                return db - da
+              })
+            const last = services[0]
+            return (
             <div key={e.id} className="flex items-start justify-between gap-2 rounded-lg border border-border p-3">
               <div className="min-w-0">
                 <p className="text-sm font-medium">{e.label}</p>
@@ -133,6 +142,11 @@ export function EquipmentSection({ clientId }: { clientId: string }) {
                 {e.install_date && (
                   <p className="text-xs text-muted-foreground">Instalado: {formatDate(e.install_date)}</p>
                 )}
+                <p className="text-xs text-primary mt-1">
+                  {services.length === 0
+                    ? 'Sin servicios registrados'
+                    : `${services.length} servicio${services.length !== 1 ? 's' : ''}${last ? ` · último ${formatDate(last.scheduled_at || last.created_at)}` : ''}`}
+                </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>
@@ -151,7 +165,8 @@ export function EquipmentSection({ clientId }: { clientId: string }) {
                 />
               </div>
             </div>
-          ))
+            )
+          })
         )}
       </CardContent>
 

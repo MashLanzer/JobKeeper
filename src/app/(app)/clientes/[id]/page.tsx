@@ -422,7 +422,7 @@ export default function ClienteDetailPage() {
       </Card>
 
       {/* Equipment */}
-      <EquipmentSection clientId={id} />
+      <EquipmentSection clientId={id} jobs={jobs} />
 
       {/* Financial balance */}
       {jobs.length > 0 && (() => {

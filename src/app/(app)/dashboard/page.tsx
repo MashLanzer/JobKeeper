@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench } from 'lucide-react'
+import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench, Navigation } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatCard } from '@/components/dashboard/stat-card'
@@ -50,6 +50,13 @@ function getGreeting(user: { email?: string | null; user_metadata?: Record<strin
 export default function DashboardPage() {
   const { user } = useAuth()
   const router = useRouter()
+
+  const openTodayRoute = () => {
+    const addresses = todayJobs.filter((j) => j.address).map((j) => j.address as string)
+    if (!addresses.length) return
+    const url = `https://www.google.com/maps/dir/${addresses.map((a) => encodeURIComponent(a)).join('/')}`
+    window.open(url, '_blank')
+  }
 
   const scheduleMaintenance = (c: Client) => {
     const data = {
@@ -270,10 +277,18 @@ export default function DashboardPage() {
       {/* Today's agenda */}
       {todayJobs.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-primary" />
-            Hoy ({todayJobs.length})
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary" />
+              Hoy ({todayJobs.length})
+            </h2>
+            {todayJobs.some((j) => j.address) && (
+              <Button variant="ghost" size="sm" className="h-8" onClick={openTodayRoute}>
+                <Navigation className="h-3.5 w-3.5 mr-1" />
+                Ruta
+              </Button>
+            )}
+          </div>
           <div className="flex flex-col gap-3">
             {todayJobs.map((job) => (
               <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
