@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { Header } from '@/components/layout/header'
 import { BottomNav } from '@/components/layout/bottom-nav'
+import { Fab } from '@/components/layout/fab'
 import { LockGate } from '@/components/providers/lock-gate'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </main>
+        <Fab />
         <BottomNav />
       </div>
     </LockGate>
