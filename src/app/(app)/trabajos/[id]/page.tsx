@@ -1327,7 +1327,7 @@ export default function JobDetailPage() {
                   </div>
                 )}
                 <div className="flex justify-between font-semibold">
-                  <span>Total</span><span className="text-green-600 dark:text-green-400">{formatCurrency(itemsTotal)}</span>
+                  <span>Total</span><span className="text-money">{formatCurrency(itemsTotal)}</span>
                 </div>
               </div>
 
@@ -1411,7 +1411,7 @@ export default function JobDetailPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Precio total</span>
-              <span className="font-semibold text-green-500">{formatCurrency(job.price)}</span>
+              <span className="font-semibold text-money">{formatCurrency(job.price)}</span>
             </div>
             {job.deposit > 0 && (
               <div className="flex justify-between text-sm">
@@ -1443,11 +1443,11 @@ export default function JobDetailPage() {
             <Separator />
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total cobrado</span>
-              <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(collected)}</span>
+              <span className="font-medium text-money">{formatCurrency(collected)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Pendiente por cobrar</span>
-              <span className={`font-semibold ${pendingAmount > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
+              <span className={`font-semibold ${pendingAmount > 0 ? 'text-pending' : 'text-money'}`}>
                 {formatCurrency(pendingAmount)}
               </span>
             </div>
@@ -1469,7 +1469,7 @@ export default function JobDetailPage() {
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground font-medium">Ganancia neta</span>
-                  <span className={`font-bold ${jobProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                  <span className={`font-bold ${jobProfit >= 0 ? 'text-money' : 'text-destructive'}`}>
                     {formatCurrency(jobProfit)}
                   </span>
                 </div>

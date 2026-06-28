@@ -56,7 +56,9 @@ export default function CalculadoraPage() {
                     onClick={() => setUnit(u)}
                     className={cn(
                       'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                      unit === u ? 'bg-card shadow-sm' : 'text-muted-foreground'
+                      unit === u
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
                     {u === 'ft2' ? 'ft²' : 'm²'}

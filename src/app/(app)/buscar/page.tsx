@@ -7,6 +7,7 @@ import { ArrowLeft, Search, Briefcase, Users, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { getJobs } from '@/services/jobs'
 import { getClients } from '@/services/clients'
@@ -93,7 +94,7 @@ export default function BuscarPage() {
           Escribe al menos 2 caracteres para buscar
         </p>
       ) : loading ? (
-        <p className="text-sm text-muted-foreground text-center py-8">Buscando...</p>
+        <ListSkeleton count={4} />
       ) : totalResults === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">
           Sin resultados para &quot;{term}&quot;
@@ -121,7 +122,7 @@ export default function BuscarPage() {
                             {job.client ? ` · ${job.client.name}` : ''}
                           </p>
                         </div>
-                        <span className="text-sm font-semibold text-green-500 flex-shrink-0">
+                        <span className="text-sm font-semibold text-money flex-shrink-0">
                           {formatCurrency(job.price)}
                         </span>
                       </CardContent>

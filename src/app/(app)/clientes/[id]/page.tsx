@@ -442,12 +442,12 @@ export default function ClienteDetailPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total cobrado</span>
-                <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(totalCollected)}</span>
+                <span className="font-medium text-money">{formatCurrency(totalCollected)}</span>
               </div>
               <div className="h-px bg-border" />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Saldo pendiente</span>
-                <span className={`font-bold ${balance > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                <span className={`font-bold ${balance > 0 ? 'text-pending' : 'text-money'}`}>
                   {formatCurrency(balance)}
                 </span>
               </div>

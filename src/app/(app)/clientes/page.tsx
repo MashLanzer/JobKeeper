@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
+import { ErrorState } from '@/components/shared/error-state'
 import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import { ClientCard } from '@/components/clients/client-card'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
@@ -75,7 +76,9 @@ export default function ClientesPage() {
             onClick={() => setFilter(t.value)}
             className={cn(
               'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
-              filter === t.value ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'
+              filter === t.value
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {t.label}
@@ -86,7 +89,7 @@ export default function ClientesPage() {
       {loading ? (
         <ListSkeleton count={4} />
       ) : error ? (
-        <p className="text-sm text-destructive text-center py-8">{error}</p>
+        <ErrorState onRetry={refetch} />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={Users}

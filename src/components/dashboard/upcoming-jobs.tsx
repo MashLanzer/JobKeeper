@@ -64,7 +64,7 @@ export function UpcomingJobs({ jobs }: UpcomingJobsProps) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-green-500">
+                <span className="text-sm font-semibold text-money">
                   {formatCurrency(job.price)}
                 </span>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />

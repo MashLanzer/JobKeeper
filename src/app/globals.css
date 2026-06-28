@@ -91,6 +91,15 @@
     min-width: 44px;
   }
 
+  /* Colores semánticos para montos (un solo verde/ámbar en toda la app) */
+  .text-money {
+    @apply text-green-600 dark:text-green-400;
+  }
+
+  .text-pending {
+    @apply text-amber-600 dark:text-amber-400;
+  }
+
   .page-transition {
     animation: fadeIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -133,5 +142,11 @@
 
   .mb-safe {
     margin-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Espacio inferior = alto de la BottomNav + safe-area (evita que la barra
+     tape el contenido en dispositivos con notch/gesture bar) */
+  .pb-nav {
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom));
   }
 }

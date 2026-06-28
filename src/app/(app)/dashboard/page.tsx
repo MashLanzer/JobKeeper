@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench, Navigation } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -90,11 +91,14 @@ export default function DashboardPage() {
   }, [])
 
   const markFollowupDone = async (jobId: string) => {
-    setFollowups((prev) => prev.filter((j) => j.id !== jobId))
+    const prev = followups
+    setFollowups((p) => p.filter((j) => j.id !== jobId))
     try {
       await updateJob(jobId, { followup_done: true })
     } catch {
-      // si falla, no es crítico
+      // si falla, restauramos el item para no perder el seguimiento
+      setFollowups(prev)
+      toast.error('No se pudo marcar el seguimiento')
     }
   }
 
@@ -202,7 +206,7 @@ export default function DashboardPage() {
           <p className="text-xs font-semibold text-muted-foreground mb-2">Esta semana</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(weekStats.income)}</p>
+              <p className="text-lg font-bold text-money">{formatCurrency(weekStats.income)}</p>
               <p className="text-xs text-muted-foreground">ingresos</p>
             </div>
             <div>
@@ -224,7 +228,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-amber-600/80 dark:text-amber-500/80">En trabajos activos</p>
               </div>
             </div>
-            <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
+            <p className="text-lg font-bold text-pending">
               {formatCurrency(stats?.pendingBalance || 0)}
             </p>
           </div>
@@ -308,7 +312,7 @@ export default function DashboardPage() {
               </Button>
             )}
           </div>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {todayJobs.map((job) => (
               <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
                 <Card className="hover:border-primary/50 transition-colors">
@@ -327,7 +331,7 @@ export default function DashboardPage() {
                         {job.client ? ` · ${job.client.name}` : ''}
                       </p>
                     </div>
-                    <span className="text-sm font-semibold text-green-500 flex-shrink-0">
+                    <span className="text-sm font-semibold text-money flex-shrink-0">
                       {formatCurrency(job.price)}
                     </span>
                   </CardContent>

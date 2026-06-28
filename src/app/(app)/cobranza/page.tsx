@@ -77,7 +77,7 @@ export default function CobranzaPage() {
               Total por cobrar
             </p>
           </div>
-          <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{formatCurrency(total)}</p>
+          <p className="text-lg font-bold text-pending">{formatCurrency(total)}</p>
         </div>
       )}
 
@@ -102,7 +102,7 @@ export default function CobranzaPage() {
                       {d.job.scheduled_at ? ` · ${formatDate(d.job.scheduled_at)}` : ''}
                     </p>
                   </Link>
-                  <span className="text-base font-bold text-amber-600 dark:text-amber-400 flex-shrink-0">
+                  <span className="text-base font-bold text-pending flex-shrink-0">
                     {formatCurrency(d.pending)}
                   </span>
                 </div>

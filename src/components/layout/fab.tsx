@@ -16,7 +16,7 @@ export function Fab() {
     <Link
       href="/trabajos/nuevo"
       aria-label="Nuevo trabajo"
-      className="fixed right-4 bottom-24 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
+      className="fixed right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
     >
       <Plus className="h-7 w-7" />
     </Link>

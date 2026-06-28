@@ -151,7 +151,7 @@ export default function FinanzasPage() {
                   </div>
                   <p className="text-xs text-muted-foreground">Ingresos</p>
                 </div>
-                <p className="text-xl font-bold text-green-500">
+                <p className="text-xl font-bold text-money">
                   {formatCurrency(summary?.totalIncome || 0)}
                 </p>
               </CardContent>
@@ -180,7 +180,7 @@ export default function FinanzasPage() {
                     </div>
                     <p className="text-sm font-medium">Ganancia neta</p>
                   </div>
-                  <p className={`text-2xl font-bold ${(summary?.netProfit || 0) >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                  <p className={`text-2xl font-bold ${(summary?.netProfit || 0) >= 0 ? 'text-money' : 'text-destructive'}`}>
                     {formatCurrency(summary?.netProfit || 0)}
                   </p>
                 </div>
@@ -247,7 +247,7 @@ export default function FinanzasPage() {
                             </p>
                           )}
                         </div>
-                        <span className="text-sm font-semibold text-green-500 ml-3">
+                        <span className="text-sm font-semibold text-money ml-3">
                           +{formatCurrency(job.price)}
                         </span>
                       </CardContent>

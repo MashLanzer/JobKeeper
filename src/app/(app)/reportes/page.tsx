@@ -412,7 +412,7 @@ export default function ReportesPage() {
               <p className="text-xs text-muted-foreground">Cliente más rentable</p>
               <p className="text-sm font-semibold truncate">{stats.topClient?.name || '—'}</p>
               {stats.topClient && (
-                <p className="text-xs text-green-600 dark:text-green-400">{formatCurrency(stats.topClient.total)}</p>
+                <p className="text-xs text-money">{formatCurrency(stats.topClient.total)}</p>
               )}
             </div>
             {stats.quoteConversion !== null && (

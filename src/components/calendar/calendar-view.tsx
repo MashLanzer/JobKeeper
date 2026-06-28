@@ -143,7 +143,9 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
           onClick={() => setView('mes')}
           className={cn(
             'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
-            view === 'mes' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'
+            view === 'mes'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           Mes
@@ -152,7 +154,9 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
           onClick={() => setView('semana')}
           className={cn(
             'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
-            view === 'semana' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'
+            view === 'semana'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           Semana
@@ -225,7 +229,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                             />
                             <span className="truncate">{job.title}</span>
                           </div>
-                          <span className="text-xs font-medium text-green-500 flex-shrink-0">
+                          <span className="text-xs font-medium text-money flex-shrink-0">
                             {formatCurrency(job.price)}
                           </span>
                         </Link>
@@ -357,7 +361,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                               : 'Sin hora programada'}
                           </p>
                         </div>
-                        <span className="text-sm font-semibold text-green-500">
+                        <span className="text-sm font-semibold text-money">
                           {formatCurrency(job.price)}
                         </span>
                       </div>

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
+import { ErrorState } from '@/components/shared/error-state'
 import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import { ExpenseCard } from '@/components/expenses/expense-card'
 import { useExpenses } from '@/hooks/use-expenses'
@@ -18,7 +19,7 @@ import { formatCurrency } from '@/lib/utils'
 export default function GastosPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
-  const { expenses, loading, error, remove } = useExpenses(
+  const { expenses, loading, error, remove, refetch } = useExpenses(
     categoryFilter !== 'all' ? { category: categoryFilter } : undefined
   )
 
@@ -88,7 +89,7 @@ export default function GastosPage() {
       {loading ? (
         <ListSkeleton count={4} />
       ) : error ? (
-        <p className="text-sm text-destructive text-center py-8">{error}</p>
+        <ErrorState onRetry={refetch} />
       ) : visibleExpenses.length === 0 ? (
         <EmptyState
           icon={Receipt}
