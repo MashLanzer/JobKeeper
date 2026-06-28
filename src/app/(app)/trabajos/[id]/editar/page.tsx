@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useJob } from '@/hooks/use-jobs'
 import { useClients } from '@/hooks/use-clients'
 import { updateJob } from '@/services/jobs'
+import { scheduleJobReminder } from '@/lib/local-notifications'
 
 export default function EditarTrabajoPage() {
   const params = useParams()
@@ -30,6 +31,8 @@ export default function EditarTrabajoPage() {
         payment_method: data.payment_method || null,
         completed_at: data.status === 'completado' ? completedAt : null,
       })
+      // Reprograma (o cancela) el recordatorio según la nueva fecha.
+      scheduleJobReminder({ id, title: data.title, scheduled_at: data.scheduled_at || null })
       toast.success('Trabajo actualizado')
       // replace (no push): así "atrás" desde el detalle no vuelve al formulario
       router.replace(`/trabajos/${id}`)

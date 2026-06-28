@@ -18,6 +18,7 @@ import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
 import { haptic } from '@/lib/haptics'
 import { getPdfPrefs } from '@/lib/pdf-prefs'
+import { cancelJobReminder } from '@/lib/local-notifications'
 import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
 import { createTemplate } from '@/services/templates'
@@ -841,6 +842,7 @@ export default function JobDetailPage() {
   const handleDelete = async () => {
     try {
       await remove()
+      cancelJobReminder(id)
       toast.success('Trabajo eliminado')
       router.push('/trabajos')
     } catch {

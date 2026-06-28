@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2, Download, Lock } from 'lucide-react'
+import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2, Download, Lock, Bell } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ import { getTemplates } from '@/services/templates'
 import { getPin, setPin, clearPin } from '@/lib/pin'
 import { getCurrency, setCurrency, CURRENCIES } from '@/lib/currency'
 import { getPdfPrefs, setPdfPrefs, type PdfPrefs } from '@/lib/pdf-prefs'
+import { ensurePermission, syncAllReminders } from '@/lib/local-notifications'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 
@@ -132,12 +133,30 @@ export default function ConfiguracionPage() {
   const [hasPin, setHasPin] = useState(false)
   const [currency, setCurrencyState] = useState('USD')
   const [pdfPrefs, setPdfPrefsState] = useState<PdfPrefs>({ photos: true, checklist: true, signature: true })
+  const [remindersOn, setRemindersOn] = useState(true)
+  const [reminderLead, setReminderLead] = useState('1d')
 
   useEffect(() => {
     setHasPin(!!getPin())
     setCurrencyState(getCurrency())
     setPdfPrefsState(getPdfPrefs())
+    setRemindersOn(localStorage.getItem('reminders_enabled') !== '0')
+    setReminderLead(localStorage.getItem('reminder_lead') || '1d')
   }, [])
+
+  const handleToggleReminders = async (v: boolean) => {
+    setRemindersOn(v)
+    localStorage.setItem('reminders_enabled', v ? '1' : '0')
+    if (v) await ensurePermission()
+    await syncAllReminders()
+    toast.success(v ? 'Recordatorios activados' : 'Recordatorios desactivados')
+  }
+
+  const handleChangeLead = async (v: string) => {
+    setReminderLead(v)
+    localStorage.setItem('reminder_lead', v)
+    await syncAllReminders()
+  }
 
   const togglePdfPref = (key: keyof PdfPrefs, value: boolean) => {
     const next = { ...pdfPrefs, [key]: value }
@@ -428,6 +447,42 @@ export default function ConfiguracionPage() {
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Reminders */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Recordatorios de trabajos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm">Avisar antes de cada trabajo</p>
+              <p className="text-xs text-muted-foreground">Notificación en el teléfono (app cerrada)</p>
+            </div>
+            <Switch checked={remindersOn} onCheckedChange={handleToggleReminders} />
+          </div>
+          {remindersOn && (
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Cuándo avisar</p>
+              <Select value={reminderLead} onValueChange={handleChangeLead}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">1 hora antes</SelectItem>
+                  <SelectItem value="3h">3 horas antes</SelectItem>
+                  <SelectItem value="1d">1 día antes</SelectItem>
+                  <SelectItem value="2d">2 días antes</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Solo aplica a trabajos con fecha y hora programada.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
