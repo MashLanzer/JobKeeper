@@ -136,6 +136,27 @@ export async function getTodayJobs(): Promise<Job[]> {
   return data as Job[]
 }
 
+export async function getWeekStats(): Promise<{ income: number; count: number }> {
+  const supabase = createClient()
+  const now = new Date()
+  const start = new Date(now)
+  start.setDate(now.getDate() - now.getDay()) // domingo de esta semana
+  start.setHours(0, 0, 0, 0)
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('price, completed_at')
+    .eq('status', 'completado')
+    .gte('completed_at', start.toISOString())
+
+  if (error) throw error
+  const jobs = data || []
+  return {
+    income: jobs.reduce((s, j) => s + Number(j.price), 0),
+    count: jobs.length,
+  }
+}
+
 export async function getTomorrowJobs(): Promise<Job[]> {
   const supabase = createClient()
   const now = new Date()

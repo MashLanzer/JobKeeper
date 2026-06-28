@@ -20,6 +20,8 @@ import { getExpenses } from '@/services/expenses'
 import { getMaterials } from '@/services/materials'
 import { getTemplates } from '@/services/templates'
 import { getPin, setPin, clearPin } from '@/lib/pin'
+import { getCurrency, setCurrency, CURRENCIES } from '@/lib/currency'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
@@ -126,9 +128,11 @@ export default function ConfiguracionPage() {
   const [exporting, setExporting] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [hasPin, setHasPin] = useState(false)
+  const [currency, setCurrencyState] = useState('USD')
 
   useEffect(() => {
     setHasPin(!!getPin())
+    setCurrencyState(getCurrency())
   }, [])
 
   const handleSavePin = () => {
@@ -390,6 +394,29 @@ export default function ConfiguracionPage() {
                 <><Moon className="h-4 w-4" /> Oscuro</>
               )}
             </Button>
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Moneda</p>
+            <Select
+              value={currency}
+              onValueChange={(v) => {
+                setCurrencyState(v)
+                setCurrency(v)
+                toast.success('Moneda actualizada')
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

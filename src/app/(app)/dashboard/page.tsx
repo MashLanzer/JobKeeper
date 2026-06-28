@@ -10,7 +10,7 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { UpcomingJobs } from '@/components/dashboard/upcoming-jobs'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { DashboardSkeleton } from '@/components/shared/loading-skeleton'
-import { getDashboardStats, getPendingBalance, getTodayJobs, getTomorrowJobs, getFollowupsDue } from '@/services/jobs'
+import { getDashboardStats, getPendingBalance, getTodayJobs, getTomorrowJobs, getFollowupsDue, getWeekStats } from '@/services/jobs'
 import { updateJob } from '@/services/jobs'
 import { getFinanceSummary } from '@/services/expenses'
 import { getSettings } from '@/services/settings'
@@ -80,11 +80,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [incomeGoal, setIncomeGoal] = useState(0)
   const [prevRevenue, setPrevRevenue] = useState<number | null>(null)
+  const [weekStats, setWeekStats] = useState<{ income: number; count: number } | null>(null)
   const [dueMaintenance, setDueMaintenance] = useState<Client[]>([])
   const [followups, setFollowups] = useState<Job[]>([])
 
   useEffect(() => {
     getFollowupsDue().then(setFollowups).catch(() => {})
+    getWeekStats().then(setWeekStats).catch(() => {})
   }, [])
 
   const markFollowupDone = async (jobId: string) => {
@@ -193,6 +195,23 @@ export default function DashboardPage() {
           </Link>
         </Button>
       </div>
+
+      {/* This week summary */}
+      {weekStats && (weekStats.count > 0 || weekStats.income > 0) && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">Esta semana</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(weekStats.income)}</p>
+              <p className="text-xs text-muted-foreground">ingresos</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold">{weekStats.count}</p>
+              <p className="text-xs text-muted-foreground">trabajos completados</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pending balance alert */}
       {(stats?.pendingBalance || 0) > 0 && (
