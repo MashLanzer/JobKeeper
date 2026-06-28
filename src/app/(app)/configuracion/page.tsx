@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2, Download } from 'lucide-react'
+import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2, Download, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ import { getClients } from '@/services/clients'
 import { getExpenses } from '@/services/expenses'
 import { getMaterials } from '@/services/materials'
 import { getTemplates } from '@/services/templates'
+import { getPin, setPin, clearPin } from '@/lib/pin'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
@@ -123,6 +124,30 @@ export default function ConfiguracionPage() {
   }
 
   const [exporting, setExporting] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [hasPin, setHasPin] = useState(false)
+
+  useEffect(() => {
+    setHasPin(!!getPin())
+  }, [])
+
+  const handleSavePin = () => {
+    if (!/^\d{4,8}$/.test(pinInput)) {
+      toast.error('El PIN debe ser de 4 a 8 dígitos')
+      return
+    }
+    setPin(pinInput)
+    setHasPin(true)
+    setPinInput('')
+    toast.success('PIN activado')
+  }
+
+  const handleRemovePin = () => {
+    clearPin()
+    setHasPin(false)
+    setPinInput('')
+    toast.success('PIN desactivado')
+  }
 
   const handleExportBackup = async () => {
     setExporting(true)
@@ -366,6 +391,55 @@ export default function ConfiguracionPage() {
               )}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* App lock (PIN) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            Bloqueo con PIN
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {hasPin ? (
+            <>
+              <p className="text-sm text-green-600 dark:text-green-400">PIN activado</p>
+              <p className="text-xs text-muted-foreground">Se pide al abrir la app.</p>
+              <div className="flex gap-2">
+                <Input
+                  inputMode="numeric"
+                  type="password"
+                  placeholder="Nuevo PIN"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  maxLength={8}
+                  className="flex-1"
+                />
+                <Button onClick={handleSavePin} size="sm">Cambiar</Button>
+                <Button onClick={handleRemovePin} size="sm" variant="ghost" className="text-destructive">Quitar</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Protege la app con un PIN de 4 a 8 dígitos (se pide al abrir).
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  inputMode="numeric"
+                  type="password"
+                  placeholder="PIN (4-8 dígitos)"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  maxLength={8}
+                  className="flex-1"
+                />
+                <Button onClick={handleSavePin} size="sm">Activar</Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

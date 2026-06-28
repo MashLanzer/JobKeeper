@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Receipt } from 'lucide-react'
+import { Plus, Receipt, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -37,12 +37,20 @@ export default function GastosPage() {
         title="Gastos"
         description={loading ? '' : `${formatCurrency(totalAmount)} total`}
         action={
-          <Button asChild size="sm">
-            <Link href="/gastos/nuevo">
-              <Plus className="h-4 w-4 mr-1" />
-              Nuevo
-            </Link>
-          </Button>
+          <div className="flex gap-1">
+            <Button asChild size="sm" variant="outline">
+              <Link href="/gastos/recurrentes">
+                <Repeat className="h-4 w-4 mr-1" />
+                Fijos
+              </Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/gastos/nuevo">
+                <Plus className="h-4 w-4 mr-1" />
+                Nuevo
+              </Link>
+            </Button>
+          </div>
         }
       />
 
