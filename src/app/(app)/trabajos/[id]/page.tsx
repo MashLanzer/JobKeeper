@@ -17,6 +17,7 @@ import { getSettings, type BusinessSettings } from '@/services/settings'
 import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
 import { haptic } from '@/lib/haptics'
+import { getPdfPrefs } from '@/lib/pdf-prefs'
 import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
 import { createTemplate } from '@/services/templates'
@@ -322,6 +323,7 @@ export default function JobDetailPage() {
     if (!job) return
     setGeneratingPdf(true)
     try {
+      const prefs = getPdfPrefs()
       const business = settings
       const businessName = business.name.trim() || 'WorkLedger'
       const contact = [business.phone, business.email].filter(Boolean).join('   ·   ')
@@ -466,7 +468,7 @@ export default function JobDetailPage() {
       }
 
       // Tareas realizadas (checklist)
-      const doneTasks = checklist.filter((i) => i.done)
+      const doneTasks = prefs.checklist ? checklist.filter((i) => i.done) : []
       if (doneTasks.length > 0) {
         y += 4
         doc.setDrawColor(220, 220, 220)
@@ -487,7 +489,7 @@ export default function JobDetailPage() {
       }
 
       // Firma del cliente
-      if (signature) {
+      if (signature && prefs.signature) {
         try {
           y += 6
           doc.addImage(signature, 'PNG', margin, y, 50, 22)
@@ -514,7 +516,7 @@ export default function JobDetailPage() {
       doc.text(businessName, pageW - margin, pageH - 10, { align: 'right' })
 
       // Fotos del trabajo (en página aparte para no desordenar el recibo)
-      const photoList = photos.filter((p) => p.url).slice(0, 4)
+      const photoList = prefs.photos ? photos.filter((p) => p.url).slice(0, 4) : []
       if (photoList.length) {
         doc.addPage()
         doc.setFont('helvetica', 'bold')

@@ -21,7 +21,9 @@ import { getMaterials } from '@/services/materials'
 import { getTemplates } from '@/services/templates'
 import { getPin, setPin, clearPin } from '@/lib/pin'
 import { getCurrency, setCurrency, CURRENCIES } from '@/lib/currency'
+import { getPdfPrefs, setPdfPrefs, type PdfPrefs } from '@/lib/pdf-prefs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
@@ -129,11 +131,19 @@ export default function ConfiguracionPage() {
   const [pinInput, setPinInput] = useState('')
   const [hasPin, setHasPin] = useState(false)
   const [currency, setCurrencyState] = useState('USD')
+  const [pdfPrefs, setPdfPrefsState] = useState<PdfPrefs>({ photos: true, checklist: true, signature: true })
 
   useEffect(() => {
     setHasPin(!!getPin())
     setCurrencyState(getCurrency())
+    setPdfPrefsState(getPdfPrefs())
   }, [])
+
+  const togglePdfPref = (key: keyof PdfPrefs, value: boolean) => {
+    const next = { ...pdfPrefs, [key]: value }
+    setPdfPrefsState(next)
+    setPdfPrefs(next)
+  }
 
   const handleSavePin = () => {
     if (!/^\d{4,8}$/.test(pinInput)) {
@@ -417,6 +427,30 @@ export default function ConfiguracionPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Receipt PDF options */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Info className="h-4 w-4" />
+            Contenido del recibo PDF
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Incluir fotos</span>
+            <Switch checked={pdfPrefs.photos} onCheckedChange={(v) => togglePdfPref('photos', v)} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Incluir checklist</span>
+            <Switch checked={pdfPrefs.checklist} onCheckedChange={(v) => togglePdfPref('checklist', v)} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Incluir firma</span>
+            <Switch checked={pdfPrefs.signature} onCheckedChange={(v) => togglePdfPref('signature', v)} />
           </div>
         </CardContent>
       </Card>
