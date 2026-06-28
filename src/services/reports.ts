@@ -89,12 +89,13 @@ export async function getYearReport(year: number): Promise<YearReport> {
   const endStr = `${year}-12-31`
 
   const [jobsRes, expRes] = await Promise.all([
+    // Ingresos del año = trabajos cobrados (paid_at), no completados.
     supabase
       .from('jobs')
-      .select('price, category, completed_at')
-      .eq('status', 'completado')
-      .gte('completed_at', startISO)
-      .lte('completed_at', endISO),
+      .select('price, category, paid_at')
+      .not('paid_at', 'is', null)
+      .gte('paid_at', startISO)
+      .lte('paid_at', endISO),
     supabase
       .from('expenses')
       .select('amount, date')
@@ -114,8 +115,8 @@ export async function getYearReport(year: number): Promise<YearReport> {
   let jobsCompleted = 0
 
   for (const job of jobsRes.data || []) {
-    if (!job.completed_at) continue
-    const m = new Date(job.completed_at).getMonth()
+    if (!job.paid_at) continue
+    const m = new Date(job.paid_at).getMonth()
     const price = Number(job.price) || 0
     months[m].income += price
     totalIncome += price

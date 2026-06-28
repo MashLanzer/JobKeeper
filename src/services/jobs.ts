@@ -142,18 +142,26 @@ export async function getWeekStats(): Promise<{ income: number; count: number }>
   const start = new Date(now)
   start.setDate(now.getDate() - now.getDay()) // domingo de esta semana
   start.setHours(0, 0, 0, 0)
+  const startISO = start.toISOString()
 
-  const { data, error } = await supabase
-    .from('jobs')
-    .select('price, completed_at')
-    .eq('status', 'completado')
-    .gte('completed_at', start.toISOString())
+  // Ingresos = cobrado esta semana (paid_at); count = trabajos completados.
+  const [paidRes, completedRes] = await Promise.all([
+    supabase
+      .from('jobs')
+      .select('price, paid_at')
+      .not('paid_at', 'is', null)
+      .gte('paid_at', startISO),
+    supabase
+      .from('jobs')
+      .select('id')
+      .eq('status', 'completado')
+      .gte('completed_at', startISO),
+  ])
 
-  if (error) throw error
-  const jobs = data || []
+  if (paidRes.error) throw paidRes.error
   return {
-    income: jobs.reduce((s, j) => s + Number(j.price), 0),
-    count: jobs.length,
+    income: (paidRes.data || []).reduce((s, j) => s + Number(j.price), 0),
+    count: completedRes.data?.length || 0,
   }
 }
 
@@ -229,12 +237,13 @@ export async function getIncomeTrend(months = 6) {
 
   const responses = await Promise.all(
     periods.map(({ startDate, endDate }) =>
+      // Ingreso del mes = lo cobrado (paid_at), no lo completado.
       supabase
         .from('jobs')
         .select('price')
-        .eq('status', 'completado')
-        .gte('completed_at', startDate)
-        .lte('completed_at', endDate)
+        .not('paid_at', 'is', null)
+        .gte('paid_at', startDate)
+        .lte('paid_at', endDate)
     )
   )
 
@@ -252,13 +261,21 @@ export async function getDashboardStats() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString()
 
-  const [completedRes, pendingRes, upcomingRes] = await Promise.all([
+  const [completedRes, paidRes, pendingRes, upcomingRes] = await Promise.all([
+    // Conteo de trabajos completados este mes (por completed_at)
     supabase
       .from('jobs')
-      .select('price, deposit')
+      .select('id')
       .eq('status', 'completado')
       .gte('completed_at', startOfMonth)
       .lte('completed_at', endOfMonth),
+    // Ingresos = lo cobrado este mes (por paid_at), no lo completado
+    supabase
+      .from('jobs')
+      .select('price')
+      .not('paid_at', 'is', null)
+      .gte('paid_at', startOfMonth)
+      .lte('paid_at', endOfMonth),
     supabase
       .from('jobs')
       .select('id')
@@ -272,7 +289,7 @@ export async function getDashboardStats() {
       .limit(5),
   ])
 
-  const revenueThisMonth = (completedRes.data || []).reduce(
+  const revenueThisMonth = (paidRes.data || []).reduce(
     (sum, job) => sum + (Number(job.price) || 0),
     0
   )

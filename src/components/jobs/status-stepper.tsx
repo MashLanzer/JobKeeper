@@ -5,13 +5,16 @@ import { Check, X } from 'lucide-react'
 import type { JobStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
-const STEPS: { key: JobStatus; label: string }[] = [
+// "Cobrado" no es un estado: es un paso extra derivado de paid_at, porque
+// completar un trabajo y cobrarlo son dos cosas distintas.
+const STEPS: { key: string; label: string }[] = [
   { key: 'pendiente', label: 'Pendiente' },
   { key: 'en_progreso', label: 'En progreso' },
   { key: 'completado', label: 'Completado' },
+  { key: 'cobrado', label: 'Cobrado' },
 ]
 
-export function StatusStepper({ status }: { status: JobStatus }) {
+export function StatusStepper({ status, paid = false }: { status: JobStatus; paid?: boolean }) {
   if (status === 'cancelado') {
     return (
       <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
@@ -21,7 +24,10 @@ export function StatusStepper({ status }: { status: JobStatus }) {
     )
   }
 
-  const currentIndex = STEPS.findIndex((s) => s.key === status)
+  // Si está cobrado, el paso actual es "Cobrado" (índice 3); si no, sigue el estado.
+  const currentIndex = status === 'completado' && paid
+    ? 3
+    : STEPS.findIndex((s) => s.key === status)
 
   return (
     <div className="flex items-start">

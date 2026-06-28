@@ -186,6 +186,9 @@ export default function JobDetailPage() {
   const paymentsTotal = payments.reduce((s, p) => s + Number(p.amount), 0)
   const collected = (job ? Number(job.deposit) : 0) + paymentsTotal
   const pendingAmount = (job ? Number(job.price) : 0) - collected
+  // Cobrado = el trabajo ya se marcó como pagado (paid_at). Es distinto de
+  // "completado": un trabajo puede estar terminado pero aún sin cobrar.
+  const isPaid = !!job?.paid_at
 
   const handleAddPayment = async () => {
     const amount = Number(payAmount)
@@ -783,15 +786,19 @@ export default function JobDetailPage() {
   }
 
   const handleMarkPaid = async () => {
-    if (!job || pendingAmount <= 0) return
+    if (!job) return
     setUpdatingStatus(true)
     try {
-      const created = await addPayment({
-        job_id: id,
-        amount: pendingAmount,
-        method: job.payment_method || 'efectivo',
-      })
-      setPayments((prev) => [created, ...prev])
+      // Si queda saldo, registramos el pago por el restante. Si el anticipo ya
+      // cubría todo, sólo marcamos la fecha de cobro.
+      if (pendingAmount > 0) {
+        const created = await addPayment({
+          job_id: id,
+          amount: pendingAmount,
+          method: job.payment_method || 'efectivo',
+        })
+        setPayments((prev) => [created, ...prev])
+      }
       await update({ paid_at: new Date().toISOString() })
       haptic('success')
       toast.success('Trabajo marcado como cobrado')
@@ -909,7 +916,7 @@ export default function JobDetailPage() {
       {/* Status stepper */}
       <Card>
         <CardContent className="p-4">
-          <StatusStepper status={job.status} />
+          <StatusStepper status={job.status} paid={isPaid} />
           {job.payment_method && (
             <div className="flex items-center justify-center gap-1 mt-3 text-xs text-muted-foreground capitalize">
               <CreditCard className="h-3 w-3" />
@@ -941,6 +948,28 @@ export default function JobDetailPage() {
             <CheckCircle2 className="h-4 w-4 mr-2" />
             Completar
           </Button>
+        </div>
+      )}
+
+      {/* Botón de cobro: completar y cobrar son cosas distintas. Sólo cuenta
+          como ingreso cuando se marca cobrado. */}
+      {job.status === 'completado' && !isPaid && (
+        <Button
+          className="w-full bg-green-600 hover:bg-green-700 text-white"
+          onClick={handleMarkPaid}
+          disabled={updatingStatus}
+        >
+          <DollarSign className="h-4 w-4 mr-2" />
+          {pendingAmount > 0
+            ? `Marcar como cobrado (${formatCurrency(pendingAmount)})`
+            : 'Marcar como cobrado'}
+        </Button>
+      )}
+
+      {job.status === 'completado' && isPaid && (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-green-600/30 bg-green-600/10 px-4 py-2.5">
+          <CheckCircle2 className="h-4 w-4 text-money" />
+          <span className="text-sm font-medium text-money">Cobrado</span>
         </div>
       )}
 

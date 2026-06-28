@@ -118,12 +118,13 @@ export async function getFinanceSummary(year: number, month: number) {
   const endDateStr = new Date(year, month, 0).toISOString().split('T')[0]
 
   const [incomeRes, expensesRes] = await Promise.all([
+    // Ingreso = dinero efectivamente cobrado (paid_at), no trabajos completados.
     supabase
       .from('jobs')
-      .select('price, deposit, completed_at')
-      .eq('status', 'completado')
-      .gte('completed_at', startDate)
-      .lte('completed_at', endDate),
+      .select('price, paid_at')
+      .not('paid_at', 'is', null)
+      .gte('paid_at', startDate)
+      .lte('paid_at', endDate),
     supabase
       .from('expenses')
       .select('amount, category')

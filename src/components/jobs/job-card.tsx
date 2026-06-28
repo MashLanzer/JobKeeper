@@ -12,17 +12,18 @@ interface JobCardProps {
   job: Job
 }
 
-function PaymentBadge({ price, deposit }: { price: number; deposit: number }) {
-  if (price > 0 && deposit >= price) {
+function PaymentBadge({ price, deposit, paidAt }: { price: number; deposit: number; paidAt?: string | null }) {
+  // "Cobrado" se basa en paid_at (igual que el ingreso), no sólo en el anticipo.
+  if (paidAt || (price > 0 && deposit >= price)) {
     return (
-      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 whitespace-nowrap">
-        Pagado
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-money whitespace-nowrap">
+        Cobrado
       </span>
     )
   }
   if (deposit > 0) {
     return (
-      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 whitespace-nowrap">
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-pending whitespace-nowrap">
         Anticipo
       </span>
     )
@@ -74,7 +75,7 @@ export function JobCard({ job }: JobCardProps) {
               </span>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <PaymentBadge price={job.price} deposit={job.deposit} />
+              <PaymentBadge price={job.price} deposit={job.deposit} paidAt={job.paid_at} />
               <JobStatusBadge status={job.status} />
             </div>
           </div>

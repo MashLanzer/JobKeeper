@@ -56,12 +56,13 @@ export default function ReportesPage() {
       doc.text(`Período: ${MONTH_NAMES[month - 1]} ${year}`, 14, 30)
       doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 14, 37)
 
+      // Ingresos = trabajos cobrados (paid_at), no sólo completados.
       const totalIncome = jobs
-        .filter(j => j.status === 'completado')
+        .filter(j => j.paid_at)
         .reduce((s, j) => s + Number(j.price), 0)
 
       doc.text(`Total trabajos: ${jobs.length}`, 14, 47)
-      doc.text(`Ingresos del mes: ${formatCurrency(totalIncome)}`, 14, 54)
+      doc.text(`Ingresos cobrados del mes: ${formatCurrency(totalIncome)}`, 14, 54)
 
       autoTable(doc, {
         startY: 65,
