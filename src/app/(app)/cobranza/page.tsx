@@ -23,12 +23,14 @@ export default function CobranzaPage() {
   const [debtors, setDebtors] = useState<Debtor[]>([])
   const [loading, setLoading] = useState(true)
   const [businessName, setBusinessName] = useState('')
+  const [paymentInfo, setPaymentInfo] = useState('')
 
   useEffect(() => {
     const load = async () => {
       try {
         const [jobs, settings] = await Promise.all([getJobs(), getSettings()])
         setBusinessName(settings.name)
+        setPaymentInfo(settings.payment_info)
         const active = jobs.filter((j) => j.status !== 'cancelado')
         const ids = active.map((j) => j.id)
         const payMap = await getPaymentsTotalForJobs(ids)
@@ -55,7 +57,8 @@ export default function CobranzaPage() {
     const phone = (d.job.client?.phone || '').replace(/[^\d+]/g, '')
     const name = d.job.client?.name || ''
     const from = businessName ? ` de ${businessName}` : ''
-    const msg = `Hola ${name}, te escribo${from} para recordarte el saldo pendiente de ${formatCurrency(d.pending)} por "${d.job.title}". ¡Gracias!`
+    const pay = paymentInfo ? `\n\nPuedes pagar por: ${paymentInfo}` : ''
+    const msg = `Hola ${name}, te escribo${from} para recordarte el saldo pendiente de ${formatCurrency(d.pending)} por "${d.job.title}".${pay}\n\n¡Gracias!`
     const url = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
       : `https://wa.me/?text=${encodeURIComponent(msg)}`

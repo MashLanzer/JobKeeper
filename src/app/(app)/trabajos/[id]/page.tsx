@@ -57,7 +57,7 @@ export default function JobDetailPage() {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [signature, setSignature] = useState<string | null>(null)
   const [settings, setSettings] = useState<BusinessSettings>({
-    name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '',
+    name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '', payment_info: '',
   })
   const [payments, setPayments] = useState<Payment[]>([])
   const [showPayForm, setShowPayForm] = useState(false)
@@ -224,7 +224,7 @@ export default function JobDetailPage() {
   // Sincroniza checklist, firma, garantía, seguimiento y desglose al cargar/cambiar.
   useEffect(() => {
     if (job) {
-      setChecklist(buildChecklist(job.checklist))
+      setChecklist(buildChecklist(job.checklist, job.category))
       setSignature(job.signature ?? null)
       setWarrantyUntil(job.warranty_until ?? '')
       setFollowupAt(job.followup_at ?? '')

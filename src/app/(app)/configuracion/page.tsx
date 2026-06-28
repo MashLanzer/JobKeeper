@@ -27,7 +27,7 @@ export default function ConfiguracionPage() {
   const [goalInput, setGoalInput] = useState('')
   const [savedGoal, setSavedGoal] = useState(0)
   const [business, setBusiness] = useState<BusinessSettings>({
-    name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '',
+    name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '', payment_info: '',
   })
   const [savingBusiness, setSavingBusiness] = useState(false)
 
@@ -50,6 +50,7 @@ export default function ConfiguracionPage() {
             logo: biz.logo || '',
             income_goal: legacyGoal ? Number(legacyGoal) : 0,
             review_link: '',
+            payment_info: '',
           }
           try {
             await upsertSettings(migrated)
@@ -78,6 +79,7 @@ export default function ConfiguracionPage() {
         email: business.email.trim(),
         logo: business.logo || '',
         review_link: (business.review_link || '').trim(),
+        payment_info: (business.payment_info || '').trim(),
       })
       toast.success('Datos del negocio guardados')
     } catch {
@@ -284,6 +286,16 @@ export default function ConfiguracionPage() {
               onChange={(e) => setBusiness((b) => ({ ...b, review_link: e.target.value }))}
             />
             <p className="text-[10px] text-muted-foreground">Se envía al cliente al completar un trabajo.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bizPay" className="text-xs">Datos de pago</Label>
+            <Input
+              id="bizPay"
+              placeholder="Ej: Zelle 813-555-0199 · Venmo @refri-ibarra"
+              value={business.payment_info || ''}
+              onChange={(e) => setBusiness((b) => ({ ...b, payment_info: e.target.value }))}
+            />
+            <p className="text-[10px] text-muted-foreground">Se incluye en los recordatorios de cobro.</p>
           </div>
           <Button onClick={handleSaveBusiness} size="sm" className="w-full" disabled={savingBusiness}>
             {savingBusiness ? 'Guardando...' : 'Guardar datos del negocio'}

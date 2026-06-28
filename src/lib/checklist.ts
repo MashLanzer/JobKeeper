@@ -15,8 +15,38 @@ export const DEFAULT_TASKS = [
   'Revisar conexiones eléctricas',
 ]
 
-/** Devuelve el checklist guardado del trabajo, o el predeterminado sin marcar. */
-export function buildChecklist(saved?: ChecklistItem[] | null): ChecklistItem[] {
+// Listas de tareas según el tipo de trabajo.
+const TASKS_BY_CATEGORY: Record<string, string[]> = {
+  'A/C - Instalación': [
+    'Verificar voltaje y breaker',
+    'Montar y nivelar unidad',
+    'Conectar líneas de refrigerante',
+    'Hacer vacío al sistema',
+    'Carga de gas',
+    'Prueba de drenaje',
+    'Prueba de funcionamiento',
+  ],
+  'A/C - Mantenimiento': DEFAULT_TASKS,
+  'A/C - Reparación': [
+    'Diagnóstico de la falla',
+    'Revisar componente afectado',
+    'Medir presiones',
+    'Detectar fugas',
+    'Reparar / reemplazar',
+    'Prueba de funcionamiento',
+  ],
+  'A/C - Limpieza': [
+    'Limpiar filtros',
+    'Limpiar serpentín evaporador',
+    'Limpiar serpentín condensador',
+    'Limpiar charola y drenaje',
+    'Desinfectar',
+  ],
+}
+
+/** Devuelve el checklist guardado del trabajo, o el predeterminado según la categoría. */
+export function buildChecklist(saved?: ChecklistItem[] | null, category?: string): ChecklistItem[] {
   if (saved && saved.length) return saved
-  return DEFAULT_TASKS.map((label) => ({ label, done: false }))
+  const tasks = (category && TASKS_BY_CATEGORY[category]) || DEFAULT_TASKS
+  return tasks.map((label) => ({ label, done: false }))
 }

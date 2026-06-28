@@ -7,6 +7,7 @@ export interface BusinessSettings {
   logo: string
   income_goal: number
   review_link: string
+  payment_info: string
 }
 
 export const EMPTY_SETTINGS: BusinessSettings = {
@@ -16,6 +17,7 @@ export const EMPTY_SETTINGS: BusinessSettings = {
   logo: '',
   income_goal: 0,
   review_link: '',
+  payment_info: '',
 }
 
 export async function getSettings(): Promise<BusinessSettings> {
@@ -38,6 +40,7 @@ export async function getSettings(): Promise<BusinessSettings> {
     logo: data.logo || '',
     income_goal: Number(data.income_goal) || 0,
     review_link: data.review_link || '',
+    payment_info: data.payment_info || '',
   }
 }
 

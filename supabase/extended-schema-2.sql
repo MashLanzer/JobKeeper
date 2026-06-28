@@ -24,6 +24,9 @@ ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS review_link TEXT;
 -- Tipo de cliente: "cliente" (tú le haces el trabajo) o "contratista" (te contrata)
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'cliente';
 
+-- H2: datos de pago (Zelle/Venmo/PayPal) para los recordatorios de cobro
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS payment_info TEXT;
+
 -- ----------------------------------------------------------------------------
 -- 2) EQUIPOS / UNIDADES DEL CLIENTE (G1)
 -- ----------------------------------------------------------------------------
