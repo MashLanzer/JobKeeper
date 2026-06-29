@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Plus, CalendarCheck, CalendarClock, Navigation } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CalendarCheck, CalendarClock, Navigation, Play, CheckCircle2, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,10 +13,28 @@ import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { categoryStyle } from '@/lib/categories'
-import { updateJob } from '@/services/jobs'
+import { updateJob, getJobs } from '@/services/jobs'
+import { getPayments, addPayment } from '@/services/payments'
 import { scheduleJobReminder } from '@/lib/local-notifications'
+import { haptic } from '@/lib/haptics'
 import Link from 'next/link'
 import type { Job } from '@/types'
+
+type CalFilter = 'todos' | 'pendientes' | 'sincobrar' | 'vencidos'
+
+function passesFilter(job: Job, filter: CalFilter): boolean {
+  if (filter === 'pendientes') return job.status === 'pendiente' || job.status === 'en_progreso'
+  if (filter === 'sincobrar') return job.status === 'completado' && !job.paid_at
+  if (filter === 'vencidos') return isOverdue(job)
+  return true
+}
+
+const FILTER_CHIPS: { value: CalFilter; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'pendientes', label: 'Pendientes' },
+  { value: 'sincobrar', label: 'Sin cobrar' },
+  { value: 'vencidos', label: 'Vencidos' },
+]
 
 interface CalendarViewProps {
   jobs: Job[]
@@ -65,8 +83,16 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
   const [reschedJob, setReschedJob] = useState<Job | null>(null)
   const [reschedValue, setReschedValue] = useState('')
   const [reschedSaving, setReschedSaving] = useState(false)
-  const [view, setView] = useState<'mes' | 'semana'>('mes')
+  const [view, setView] = useState<'mes' | 'semana' | 'agenda'>('mes')
   const [colorBy, setColorBy] = useState<'estado' | 'categoria'>('estado')
+  const [filter, setFilter] = useState<CalFilter>('todos')
+  const [actionBusy, setActionBusy] = useState<string | null>(null)
+  const [agendaJobs, setAgendaJobs] = useState<Job[]>([])
+  const [agendaLoading, setAgendaLoading] = useState(false)
+  const [agendaRefresh, setAgendaRefresh] = useState(0)
+
+  // Jobs visibles según el filtro rápido (aplica a mes/semana).
+  const visibleJobs = useMemo(() => jobs.filter((j) => passesFilter(j, filter)), [jobs, filter])
 
   const dotColor = (job: Job) =>
     colorBy === 'categoria' ? categoryStyle(job.category).dot : STATUS_COLORS[job.status] || 'bg-primary'
@@ -86,7 +112,7 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
 
   const jobsByDate = useMemo(() => {
     const map: Record<string, Job[]> = {}
-    jobs.forEach((job) => {
+    visibleJobs.forEach((job) => {
       const ds = job.scheduled_at || job.created_at
       if (!ds) return
       const k = dateKey(new Date(ds))
@@ -94,7 +120,7 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
       map[k].push(job)
     })
     return map
-  }, [jobs])
+  }, [visibleJobs])
 
   const weekDays = useMemo(
     () =>
@@ -119,7 +145,7 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
 
   const jobsByDay = useMemo(() => {
     const map: Record<number, Job[]> = {}
-    jobs.forEach((job) => {
+    visibleJobs.forEach((job) => {
       // Usa la fecha programada, o la de creación como respaldo, para que
       // todos los trabajos aparezcan marcados en el calendario.
       const dateStr = job.scheduled_at || job.created_at
@@ -133,7 +159,7 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
       }
     })
     return map
-  }, [jobs, year, month])
+  }, [visibleJobs, year, month])
 
   const selectedDayJobs = (selectedDay ? jobsByDay[selectedDay] || [] : []).slice().sort(byTime)
 
@@ -213,6 +239,100 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
     )
   }
 
+  // Refresca tanto el mes (página) como la vista Agenda.
+  const refreshAll = () => {
+    onChanged?.()
+    setAgendaRefresh((x) => x + 1)
+  }
+
+  // Vista Agenda: carga próximos trabajos (de hoy en adelante) bajo demanda.
+  useEffect(() => {
+    if (view !== 'agenda') return
+    setAgendaLoading(true)
+    const from = new Date()
+    from.setHours(0, 0, 0, 0)
+    getJobs({ from: from.toISOString() })
+      .then((js) => setAgendaJobs(js.filter((j) => j.scheduled_at).sort(byTime)))
+      .catch(() => setAgendaJobs([]))
+      .finally(() => setAgendaLoading(false))
+  }, [view, agendaRefresh])
+
+  // Acciones rápidas de estado/cobro desde el calendario (sin abrir el detalle).
+  const startJob = async (job: Job) => {
+    setActionBusy(job.id)
+    try {
+      await updateJob(job.id, { status: 'en_progreso' })
+      haptic('medium')
+      toast.success('Trabajo iniciado')
+      refreshAll()
+    } catch {
+      toast.error('No se pudo actualizar')
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const completeJob = async (job: Job) => {
+    setActionBusy(job.id)
+    try {
+      await updateJob(job.id, { status: 'completado', completed_at: job.completed_at || new Date().toISOString() })
+      haptic('success')
+      toast.success('Trabajo completado')
+      refreshAll()
+    } catch {
+      toast.error('No se pudo actualizar')
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const collectJob = async (job: Job) => {
+    setActionBusy(job.id)
+    try {
+      const pays = await getPayments(job.id).catch(() => [])
+      const collected = Number(job.deposit) + pays.reduce((s, p) => s + Number(p.amount), 0)
+      const pending = Number(job.price) - collected
+      if (pending > 0) {
+        await addPayment({ job_id: job.id, amount: pending, method: job.payment_method || 'efectivo' })
+      }
+      await updateJob(job.id, { paid_at: new Date().toISOString() })
+      haptic('success')
+      toast.success('Trabajo cobrado')
+      refreshAll()
+    } catch {
+      toast.error('No se pudo cobrar')
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  // Resumen del periodo (sobre lo visible según filtro).
+  const monthSummary = useMemo(() => {
+    const total = visibleJobs.reduce((s, j) => s + Number(j.price), 0)
+    const paid = visibleJobs.filter((j) => j.paid_at).length
+    return { count: visibleJobs.length, total, paid }
+  }, [visibleJobs])
+
+  const weekSummary = useMemo(() => {
+    const wj = weekDays.flatMap((d) => jobsByDate[dateKey(d)] || [])
+    return { count: wj.length, total: wj.reduce((s, j) => s + Number(j.price), 0) }
+  }, [weekDays, jobsByDate])
+
+  // Agenda: próximos trabajos agrupados por día (respeta el filtro).
+  const agendaGroups = useMemo(() => {
+    const map: Record<string, Job[]> = {}
+    agendaJobs
+      .filter((j) => passesFilter(j, filter))
+      .forEach((j) => {
+        const k = dateKey(new Date(j.scheduled_at as string))
+        if (!map[k]) map[k] = []
+        map[k].push(j)
+      })
+    return Object.keys(map)
+      .sort()
+      .map((k) => ({ key: k, jobs: map[k] }))
+  }, [agendaJobs, filter])
+
   const calendarDays: (number | null)[] = []
   for (let i = 0; i < firstDayOfMonth; i++) {
     calendarDays.push(null)
@@ -225,48 +345,110 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
     <div className="space-y-4">
       {/* View toggle */}
       <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-        <button
-          onClick={() => setView('mes')}
-          className={cn(
-            'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
-            view === 'mes'
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Mes
-        </button>
-        <button
-          onClick={() => setView('semana')}
-          className={cn(
-            'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
-            view === 'semana'
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Semana
-        </button>
-      </div>
-
-      {/* Hoy + color toggle */}
-      <div className="flex items-center justify-between gap-2">
-        <Button variant="outline" size="sm" className="h-8" onClick={goToday}>
-          <CalendarCheck className="h-3.5 w-3.5 mr-1.5" />
-          Hoy
-        </Button>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Color por:</span>
+        {(['mes', 'semana', 'agenda'] as const).map((v) => (
           <button
-            onClick={() => setColorBy((v) => (v === 'estado' ? 'categoria' : 'estado'))}
-            className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted hover:bg-muted/70 transition-colors capitalize"
+            key={v}
+            onClick={() => setView(v)}
+            className={cn(
+              'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors capitalize',
+              view === v
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
           >
-            {colorBy}
+            {v}
           </button>
-        </div>
+        ))}
       </div>
 
-      {view === 'semana' ? (
+      {/* Filtros rápidos */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {FILTER_CHIPS.map((c) => (
+          <button
+            key={c.value}
+            onClick={() => setFilter(c.value)}
+            className={cn(
+              'text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap transition-colors',
+              filter === c.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Hoy + color toggle (no aplica a la vista Agenda) */}
+      {view !== 'agenda' && (
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="outline" size="sm" className="h-8" onClick={goToday}>
+            <CalendarCheck className="h-3.5 w-3.5 mr-1.5" />
+            Hoy
+          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Color por:</span>
+            <button
+              onClick={() => setColorBy((v) => (v === 'estado' ? 'categoria' : 'estado'))}
+              className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted hover:bg-muted/70 transition-colors capitalize"
+            >
+              {colorBy}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {view === 'agenda' ? (
+        <div className="space-y-4">
+          {agendaLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Cargando…</p>
+          ) : agendaGroups.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No hay trabajos próximos</p>
+          ) : (
+            agendaGroups.map((g) => {
+              const d = new Date(g.jobs[0].scheduled_at as string)
+              const isToday = dateKey(d) === dateKey(today)
+              const dayTotal = g.jobs.reduce((s, j) => s + Number(j.price), 0)
+              return (
+                <div key={g.key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className={cn('text-sm font-semibold', isToday && 'text-primary')}>
+                      {isToday ? 'Hoy · ' : ''}
+                      {DAYS_OF_WEEK[d.getDay()]} {d.getDate()} {MONTH_NAMES[d.getMonth()].slice(0, 3)}
+                    </h3>
+                    <span className="text-xs font-medium text-money">{formatCurrency(dayTotal)}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {g.jobs.map((job) => (
+                      <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
+                        <Card className="hover:border-primary/50 transition-colors">
+                          <CardContent className="p-3 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={cn('h-2 w-2 rounded-full flex-shrink-0', dotColor(job))} />
+                              {timeOf(job) && (
+                                <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">{timeOf(job)}</span>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{job.title}</p>
+                                {job.client?.name && (
+                                  <p className="text-xs text-muted-foreground truncate">{job.client.name}</p>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-sm font-semibold text-money flex-shrink-0">
+                              {formatCurrency(job.price)}
+                            </span>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      ) : view === 'semana' ? (
         <div className="space-y-3">
           {/* Week navigation */}
           <div className="flex items-center justify-between">
@@ -281,6 +463,12 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
               <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
+
+          {weekSummary.count > 0 && (
+            <p className="text-center text-xs text-muted-foreground">
+              {weekSummary.count} trabajo{weekSummary.count !== 1 ? 's' : ''} · {formatCurrency(weekSummary.total)}
+            </p>
+          )}
 
           {/* Week day rows */}
           <div className="space-y-2">
@@ -375,6 +563,12 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
         </Button>
       </div>
 
+      {monthSummary.count > 0 && (
+        <p className="text-center text-xs text-muted-foreground -mt-2">
+          {monthSummary.count} trabajo{monthSummary.count !== 1 ? 's' : ''} · {formatCurrency(monthSummary.total)} agendado · {monthSummary.paid} cobrado{monthSummary.paid !== 1 ? 's' : ''}
+        </p>
+      )}
+
       {/* Calendar grid */}
       <div>
         {/* Day headers */}
@@ -420,13 +614,18 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
                   {day}
                 </span>
                 {hasJobs && (
-                  <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
+                  <div className="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
                     {dayJobs.slice(0, 3).map((job, i) => (
                       <span
                         key={i}
                         className={cn('block h-1.5 w-1.5 rounded-full', dotColor(job))}
                       />
                     ))}
+                    {dayJobs.length > 3 && (
+                      <span className="text-[8px] leading-none text-muted-foreground font-medium">
+                        +{dayJobs.length - 3}
+                      </span>
+                    )}
                   </div>
                 )}
                 {hasOverdue && (
@@ -498,19 +697,57 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
                           {formatCurrency(job.price)}
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 mt-2 -ml-1 text-xs text-muted-foreground"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          openReschedule(job)
-                        }}
-                      >
-                        <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
-                        Reagendar
-                      </Button>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 -ml-1 text-xs text-muted-foreground"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            openReschedule(job)
+                          }}
+                        >
+                          <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
+                          Reagendar
+                        </Button>
+
+                        {job.status === 'pendiente' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            disabled={actionBusy === job.id}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); startJob(job) }}
+                          >
+                            <Play className="h-3.5 w-3.5 mr-1.5" />
+                            Iniciar
+                          </Button>
+                        )}
+                        {job.status === 'en_progreso' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            disabled={actionBusy === job.id}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); completeJob(job) }}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                            Completar
+                          </Button>
+                        )}
+                        {job.status === 'completado' && !job.paid_at && (
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                            disabled={actionBusy === job.id}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); collectJob(job) }}
+                          >
+                            <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+                            Cobrar
+                          </Button>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 </Link>
