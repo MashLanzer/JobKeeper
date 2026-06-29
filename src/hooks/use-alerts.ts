@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getClients } from '@/services/clients'
-import { getFollowupsDue, getPendingBalance } from '@/services/jobs'
+import { getFollowupsDue, getPendingBalance, getPendingQuotes } from '@/services/jobs'
 import { hasMaintenance, maintenanceStatus, nextDueDate } from '@/lib/maintenance'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -24,10 +24,11 @@ export function useAlerts() {
     const load = async () => {
       const result: Alert[] = []
       try {
-        const [clients, followups, pending] = await Promise.all([
+        const [clients, followups, pending, quotes] = await Promise.all([
           getClients().catch(() => []),
           getFollowupsDue().catch(() => []),
           getPendingBalance().catch(() => 0),
+          getPendingQuotes().catch(() => []),
         ])
 
         // Mantenimientos vencidos / próximos
@@ -51,6 +52,17 @@ export function useAlerts() {
             type: 'info',
             title: 'Seguimiento pendiente',
             message: j.title,
+            href: `/trabajos/${j.id}`,
+          })
+        })
+
+        // Cotizaciones enviadas sin respuesta
+        quotes.forEach((j) => {
+          result.push({
+            id: `quote-${j.id}`,
+            type: 'info',
+            title: 'Cotización sin respuesta',
+            message: `${j.title}${j.client ? ` · ${j.client.name}` : ''}`,
             href: `/trabajos/${j.id}`,
           })
         })

@@ -1142,6 +1142,16 @@ export default function JobDetailPage() {
                 <SelectItem value="rechazada">Rechazada</SelectItem>
               </SelectContent>
             </Select>
+            {quoteStatus === 'aceptada' && job.status === 'pendiente' && (
+              <Button
+                className="w-full mt-1"
+                onClick={() => handleChangeStatus('en_progreso')}
+                disabled={updatingStatus}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Iniciar trabajo
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

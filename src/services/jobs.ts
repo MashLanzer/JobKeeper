@@ -205,6 +205,19 @@ export async function getFollowupsDue(): Promise<Job[]> {
   return data as Job[]
 }
 
+/** Cotizaciones enviadas que aún no tienen respuesta (ni aceptada ni rechazada). */
+export async function getPendingQuotes(): Promise<Job[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*, client:clients(id, name)')
+    .eq('quote_status', 'enviada')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data as Job[]
+}
+
 export async function getPendingBalance() {
   const supabase = createClient()
   const { data: jobs, error } = await supabase
