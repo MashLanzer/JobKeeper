@@ -11,6 +11,7 @@ import { useClients } from '@/hooks/use-clients'
 import { useCreateJob } from '@/hooks/use-jobs'
 import { getTemplates, deleteTemplate, type JobTemplate } from '@/services/templates'
 import { scheduleJobReminder } from '@/lib/local-notifications'
+import { setLastPrice } from '@/lib/job-prefs'
 import { formatCurrency } from '@/lib/utils'
 import type { Job } from '@/types'
 
@@ -62,6 +63,8 @@ export default function NuevoTrabajoPage() {
         completed_at: null,
       })
       scheduleJobReminder(job)
+      // Recuerda el precio por categoría para prellenar el próximo trabajo.
+      if (data.category && data.price) setLastPrice(data.category, Number(data.price))
       toast.success('Trabajo creado exitosamente')
       router.replace(`/trabajos/${job.id}`)
     } catch {

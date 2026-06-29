@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { JOB_CATEGORIES, JOB_STATUSES, PAYMENT_METHODS } from '@/types'
 import type { Job, Client, Equipment } from '@/types'
 import { getEquipmentForClient } from '@/services/equipment'
+import { getLastPrice } from '@/lib/job-prefs'
 import { Loader2 } from 'lucide-react'
 
 const jobSchema = z.object({
@@ -46,6 +47,7 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
     handleSubmit,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<JobFormData>({
     resolver: zodResolver(jobSchema),
@@ -105,7 +107,15 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
         <Label htmlFor="category">Categoría <span className="text-destructive">*</span></Label>
         <Select
           defaultValue={initialData?.category || 'General/Varios'}
-          onValueChange={(v) => setValue('category', v)}
+          onValueChange={(v) => {
+            setValue('category', v)
+            // En trabajos nuevos, prellena el precio con el último usado en esa
+            // categoría (si el usuario aún no escribió un precio).
+            if (!initialData && !getValues('price')) {
+              const last = getLastPrice(v)
+              if (last) setValue('price', last)
+            }
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Seleccionar categoría" />
@@ -125,7 +135,15 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
         <Label htmlFor="client_id">Cliente</Label>
         <Select
           defaultValue={initialData?.client_id || 'none'}
-          onValueChange={(v) => setValue('client_id', v === 'none' ? undefined : v)}
+          onValueChange={(v) => {
+            const id = v === 'none' ? undefined : v
+            setValue('client_id', id)
+            // Autocompleta la dirección del cliente si el campo está vacío.
+            if (id && !getValues('address')) {
+              const c = clients.find((x) => x.id === id)
+              if (c?.address) setValue('address', c.address)
+            }
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Sin cliente" />
