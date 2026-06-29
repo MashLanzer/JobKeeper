@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight, Plus, CalendarCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
@@ -36,6 +37,7 @@ const dateKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewProps) {
+  const router = useRouter()
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [view, setView] = useState<'mes' | 'semana'>('mes')
   const [colorBy, setColorBy] = useState<'estado' | 'categoria'>('estado')
@@ -127,6 +129,28 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
     setSelectedDay(null)
   }
 
+  // Agenda un trabajo en una fecha concreta: prellena el formulario con la
+  // fecha (09:00) y abre "Nuevo trabajo".
+  const scheduleOnDay = (d: Date) => {
+    const at = new Date(d)
+    at.setHours(9, 0, 0, 0)
+    sessionStorage.setItem('prefill_job', JSON.stringify({ scheduled_at: at.toISOString() }))
+    router.push('/trabajos/nuevo')
+  }
+
+  // Vuelve al día de hoy (mes y semana) y lo selecciona.
+  const goToday = () => {
+    const t = new Date()
+    onMonthChange(t.getFullYear(), t.getMonth() + 1)
+    const ws = new Date(t)
+    ws.setDate(t.getDate() - t.getDay())
+    ws.setHours(0, 0, 0, 0)
+    setWeekStart(ws)
+    setSelectedDay(t.getDate())
+  }
+
+  const selectedDayTotal = selectedDayJobs.reduce((s, j) => s + Number(j.price), 0)
+
   const calendarDays: (number | null)[] = []
   for (let i = 0; i < firstDayOfMonth; i++) {
     calendarDays.push(null)
@@ -163,15 +187,21 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
         </button>
       </div>
 
-      {/* Color toggle */}
-      <div className="flex items-center justify-end gap-2">
-        <span className="text-xs text-muted-foreground">Color por:</span>
-        <button
-          onClick={() => setColorBy((v) => (v === 'estado' ? 'categoria' : 'estado'))}
-          className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted hover:bg-muted/70 transition-colors capitalize"
-        >
-          {colorBy}
-        </button>
+      {/* Hoy + color toggle */}
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="outline" size="sm" className="h-8" onClick={goToday}>
+          <CalendarCheck className="h-3.5 w-3.5 mr-1.5" />
+          Hoy
+        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Color por:</span>
+          <button
+            onClick={() => setColorBy((v) => (v === 'estado' ? 'categoria' : 'estado'))}
+            className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted hover:bg-muted/70 transition-colors capitalize"
+          >
+            {colorBy}
+          </button>
+        </div>
       </div>
 
       {view === 'semana' ? (
@@ -207,11 +237,20 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                     <span className={cn('text-sm font-semibold', isToday && 'text-primary')}>
                       {DAYS_OF_WEEK[d.getDay()]} {d.getDate()}
                     </span>
-                    {dayJobs.length > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {dayJobs.length} trabajo{dayJobs.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {dayJobs.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {dayJobs.length} trabajo{dayJobs.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => scheduleOnDay(d)}
+                        className="text-muted-foreground hover:text-primary"
+                        aria-label="Agendar este día"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   {dayJobs.length === 0 ? (
                     <p className="text-xs text-muted-foreground">Sin trabajos</p>
@@ -227,7 +266,10 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                             <span
                               className={cn('h-2 w-2 rounded-full flex-shrink-0', dotColor(job))}
                             />
-                            <span className="truncate">{job.title}</span>
+                            <span className="truncate">
+                              {job.title}
+                              {job.client?.name ? <span className="text-muted-foreground"> · {job.client.name}</span> : null}
+                            </span>
                           </div>
                           <span className="text-xs font-medium text-money flex-shrink-0">
                             {formatCurrency(job.price)}
@@ -296,11 +338,10 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                 key={day}
                 onClick={() => setSelectedDay(isSelected ? null : day)}
                 className={cn(
-                  'aspect-square flex flex-col items-center justify-start pt-1 rounded-lg transition-colors relative',
+                  'aspect-square flex flex-col items-center justify-start pt-1 rounded-lg transition-colors relative hover:bg-muted',
                   isToday && 'border-2 border-primary',
                   isSelected && 'bg-primary/10',
-                  hasJobs && !isSelected && 'hover:bg-muted',
-                  !hasJobs && 'cursor-default opacity-60'
+                  !hasJobs && !isSelected && 'text-muted-foreground'
                 )}
               >
                 <span
@@ -331,9 +372,24 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
       {/* Selected day jobs */}
       {selectedDay && (
         <div className="space-y-3">
-          <h3 className="font-semibold text-sm text-muted-foreground">
-            {selectedDay} de {MONTH_NAMES[month - 1]}
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm text-muted-foreground">
+              {selectedDay} de {MONTH_NAMES[month - 1]}
+            </h3>
+            {selectedDayTotal > 0 && (
+              <span className="text-xs font-medium text-money">{formatCurrency(selectedDayTotal)}</span>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => scheduleOnDay(new Date(year, month - 1, selectedDay))}
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            Agendar este día
+          </Button>
 
           {selectedDayJobs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sin trabajos este día</p>
