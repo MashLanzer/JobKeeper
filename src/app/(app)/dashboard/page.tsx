@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench, Navigation } from 'lucide-react'
+import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench, Navigation, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatCard } from '@/components/dashboard/stat-card'
@@ -29,6 +29,7 @@ interface Stats {
   netProfitThisMonth: number
   upcomingJobs: any[]
   pendingBalance: number
+  completedUnpaid: number
 }
 
 function getGreeting(user: { email?: string | null; user_metadata?: Record<string, string> } | null) {
@@ -150,6 +151,7 @@ export default function DashboardPage() {
           netProfitThisMonth: financeStats.netProfit,
           upcomingJobs: jobStats.upcomingJobs,
           pendingBalance,
+          completedUnpaid: jobStats.completedUnpaid,
         })
         setTodayJobs(today)
         setTomorrowJobs(tomorrow)
@@ -231,6 +233,22 @@ export default function DashboardPage() {
             <p className="text-lg font-bold text-pending">
               {formatCurrency(stats?.pendingBalance || 0)}
             </p>
+          </div>
+        </Link>
+      )}
+
+      {/* Completed but not yet collected */}
+      {(stats?.completedUnpaid || 0) > 0 && (
+        <Link href="/trabajos?cobro=sin-cobrar" className="block">
+          <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold">Completados sin cobrar</p>
+                <p className="text-xs text-muted-foreground">Listos para marcar como cobrados</p>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-primary">{stats?.completedUnpaid || 0}</p>
           </div>
         </Link>
       )}

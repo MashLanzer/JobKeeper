@@ -18,7 +18,16 @@ import type { JobFilters } from '@/services/jobs'
 type SortKey = 'reciente' | 'precio' | 'fecha'
 
 export default function TrabajosPage() {
-  const [filters, setFilters] = useState<JobFilters>({})
+  // Permite preseleccionar el filtro de cobro vía URL (?cobro=sin-cobrar),
+  // p.ej. desde la alerta "Completados sin cobrar" del dashboard.
+  const [filters, setFilters] = useState<JobFilters>(() => {
+    if (typeof window !== 'undefined') {
+      const cobro = new URLSearchParams(window.location.search).get('cobro')
+      if (cobro === 'sin-cobrar') return { paid: false }
+      if (cobro === 'cobrados') return { paid: true }
+    }
+    return {}
+  })
   const [sort, setSort] = useState<SortKey>('reciente')
   const { jobs, loading, error, refetch } = useJobs(filters)
 

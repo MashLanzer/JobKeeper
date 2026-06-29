@@ -268,7 +268,7 @@ export async function getDashboardStats() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString()
 
-  const [completedRes, paidRes, pendingRes, upcomingRes] = await Promise.all([
+  const [completedRes, paidRes, pendingRes, upcomingRes, unpaidRes] = await Promise.all([
     // Conteo de trabajos completados este mes (por completed_at)
     supabase
       .from('jobs')
@@ -294,6 +294,12 @@ export async function getDashboardStats() {
       .gte('scheduled_at', now.toISOString())
       .order('scheduled_at', { ascending: true })
       .limit(5),
+    // Trabajos completados pero aún sin cobrar (paid_at nulo)
+    supabase
+      .from('jobs')
+      .select('id')
+      .eq('status', 'completado')
+      .is('paid_at', null),
   ])
 
   const revenueThisMonth = (paidRes.data || []).reduce(
@@ -302,6 +308,7 @@ export async function getDashboardStats() {
   )
 
   return {
+    completedUnpaid: unpaidRes.data?.length || 0,
     completedThisMonth: completedRes.data?.length || 0,
     pendingJobs: pendingRes.data?.length || 0,
     revenueThisMonth,
