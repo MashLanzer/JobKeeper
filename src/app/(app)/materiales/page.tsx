@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Package, Plus, Trash2, Edit, AlertTriangle } from 'lucide-react'
+import { Package, Plus, Minus, Trash2, Edit, AlertTriangle, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { getMaterials, createMaterial, updateMaterial, deleteMaterial, type MaterialInput } from '@/services/materials'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import type { Material } from '@/types'
 
 const EMPTY: MaterialInput = { name: '', unit: '', price: 0, stock: 0, min_stock: 0, notes: '' }
@@ -31,6 +31,9 @@ export default function MaterialesPage() {
   const [editing, setEditing] = useState<Material | null>(null)
   const [form, setForm] = useState<MaterialInput>(EMPTY)
   const [saving, setSaving] = useState(false)
+  const [nameError, setNameError] = useState(false)
+  const [search, setSearch] = useState('')
+  const [lowOnly, setLowOnly] = useState(false)
 
   const load = async () => {
     try {
@@ -49,11 +52,13 @@ export default function MaterialesPage() {
   const openNew = () => {
     setEditing(null)
     setForm(EMPTY)
+    setNameError(false)
     setOpen(true)
   }
 
   const openEdit = (m: Material) => {
     setEditing(m)
+    setNameError(false)
     setForm({
       name: m.name,
       unit: m.unit || '',
@@ -67,9 +72,11 @@ export default function MaterialesPage() {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
+      setNameError(true)
       toast.error('El nombre es requerido')
       return
     }
+    setNameError(false)
     setSaving(true)
     try {
       if (editing) {
@@ -97,13 +104,37 @@ export default function MaterialesPage() {
     }
   }
 
-  const lowStock = materials.filter((m) => Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0)
+  // Ajuste rápido de stock (+/−) sin abrir el editor. Optimista con rollback.
+  const adjustStock = async (m: Material, delta: number) => {
+    const next = Math.max(0, Number(m.stock) + delta)
+    if (next === Number(m.stock)) return
+    setMaterials((prev) => prev.map((it) => (it.id === m.id ? { ...it, stock: next } : it)))
+    try {
+      await updateMaterial(m.id, { stock: next })
+    } catch {
+      setMaterials((prev) => prev.map((it) => (it.id === m.id ? { ...it, stock: m.stock } : it)))
+      toast.error('No se pudo actualizar el stock')
+    }
+  }
+
+  const isLow = (m: Material) => Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0
+  const lowStock = materials.filter(isLow)
+  const inventoryValue = materials.reduce((s, m) => s + Number(m.stock) * Number(m.price), 0)
+
+  const term = search.trim().toLowerCase()
+  const filtered = materials.filter(
+    (m) => (!lowOnly || isLow(m)) && (!term || m.name.toLowerCase().includes(term))
+  )
 
   return (
     <div className="space-y-6 page-transition">
       <PageHeader
         title="Materiales"
-        description={`${materials.length} material${materials.length !== 1 ? 'es' : ''}`}
+        description={
+          inventoryValue > 0
+            ? `${materials.length} material${materials.length !== 1 ? 'es' : ''} · valor ${formatCurrency(inventoryValue)}`
+            : `${materials.length} material${materials.length !== 1 ? 'es' : ''}`
+        }
         action={
           <Button size="sm" onClick={openNew}>
             <Plus className="h-4 w-4 mr-1" />
@@ -112,13 +143,46 @@ export default function MaterialesPage() {
         }
       />
 
+      {materials.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar material..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+          {search && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+              onClick={() => setSearch('')}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
       {lowStock.length > 0 && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+        <button
+          onClick={() => setLowOnly((v) => !v)}
+          className={cn(
+            'w-full flex items-center gap-2.5 rounded-xl border px-4 py-3 transition-colors text-left',
+            lowOnly
+              ? 'border-amber-500/60 bg-amber-500/20'
+              : 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15'
+          )}
+        >
           <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
-          <p className="text-sm text-amber-700 dark:text-amber-400">
+          <p className="text-sm text-pending flex-1">
             {lowStock.length} material{lowStock.length !== 1 ? 'es' : ''} con stock bajo
           </p>
-        </div>
+          <span className="text-xs font-medium text-pending">
+            {lowOnly ? 'Ver todos' : 'Ver solo bajos'}
+          </span>
+        </button>
       )}
 
       {loading ? (
@@ -135,10 +199,14 @@ export default function MaterialesPage() {
             </Button>
           }
         />
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          {lowOnly ? 'Ningún material con stock bajo' : 'Sin resultados'}
+        </p>
       ) : (
         <div className="flex flex-col gap-4">
-          {materials.map((m) => {
-            const low = Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0
+          {filtered.map((m) => {
+            const low = isLow(m)
             return (
               <Card key={m.id} className={low ? 'border-amber-500/40' : ''}>
                 <CardContent className="p-4 flex items-center justify-between gap-3">
@@ -146,11 +214,32 @@ export default function MaterialesPage() {
                     <p className="font-medium truncate">{m.name}</p>
                     <p className="text-xs text-muted-foreground">
                       Stock: {Number(m.stock)}{m.unit ? ` ${m.unit}` : ''}
-                      {low && <span className="text-amber-600 dark:text-amber-400 font-medium"> · bajo</span>}
+                      {low && <span className="text-pending font-medium"> · bajo</span>}
                       {Number(m.price) > 0 && <> · {formatCurrency(Number(m.price))}</>}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {/* Ajuste rápido de stock */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => adjustStock(m, -1)}
+                      disabled={Number(m.stock) <= 0}
+                      aria-label="Restar stock"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="w-7 text-center text-sm font-semibold tabular-nums">{Number(m.stock)}</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => adjustStock(m, 1)}
+                      aria-label="Sumar stock"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -180,12 +269,17 @@ export default function MaterialesPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Nombre *</Label>
+              <Label className="text-xs">Nombre <span className="text-destructive">*</span></Label>
               <Input
                 placeholder="Ej: Gas refrigerante R-410A"
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                  if (nameError && e.target.value.trim()) setNameError(false)
+                }}
+                className={nameError ? 'border-destructive focus-visible:ring-destructive/40' : ''}
               />
+              {nameError && <p className="text-xs text-destructive">Este campo es requerido.</p>}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
