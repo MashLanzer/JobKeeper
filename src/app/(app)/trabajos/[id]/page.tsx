@@ -609,6 +609,19 @@ export default function JobDetailPage() {
       notes: job.notes || '',
     }
     sessionStorage.setItem('duplicate_job', JSON.stringify(data))
+    // Extras que no viven en el formulario: desglose y materiales. Se aplican
+    // tras crear el trabajo nuevo (ver trabajos/nuevo).
+    const extras = {
+      line_items: lineItems,
+      discount: Number(discount) || 0,
+      tax_rate: Number(taxRate) || 0,
+      materials: jobMaterials.map((m) => ({
+        name: m.name,
+        quantity: Number(m.quantity),
+        unit_price: Number(m.unit_price),
+      })),
+    }
+    sessionStorage.setItem('duplicate_extras', JSON.stringify(extras))
     router.push('/trabajos/nuevo')
   }
 

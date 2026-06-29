@@ -10,6 +10,8 @@ import { JobForm } from '@/components/jobs/job-form'
 import { useClients } from '@/hooks/use-clients'
 import { useCreateJob } from '@/hooks/use-jobs'
 import { getTemplates, deleteTemplate, type JobTemplate } from '@/services/templates'
+import { updateJob } from '@/services/jobs'
+import { addJobMaterial } from '@/services/job-materials'
 import { scheduleJobReminder } from '@/lib/local-notifications'
 import { setLastPrice } from '@/lib/job-prefs'
 import { formatCurrency } from '@/lib/utils'
@@ -23,6 +25,8 @@ export default function NuevoTrabajoPage() {
   const [ready, setReady] = useState(false)
   const [templates, setTemplates] = useState<JobTemplate[]>([])
   const [usedTemplate, setUsedTemplate] = useState(false)
+  // Extras de duplicación (desglose + materiales) a aplicar tras crear.
+  const [dupExtras, setDupExtras] = useState<any>(null)
 
   useEffect(() => {
     const dup = sessionStorage.getItem('duplicate_job')
@@ -30,6 +34,11 @@ export default function NuevoTrabajoPage() {
     if (dup) {
       sessionStorage.removeItem('duplicate_job')
       setInitialData(JSON.parse(dup))
+      const extras = sessionStorage.getItem('duplicate_extras')
+      if (extras) {
+        sessionStorage.removeItem('duplicate_extras')
+        try { setDupExtras(JSON.parse(extras)) } catch { /* ignore */ }
+      }
     } else if (prefill) {
       sessionStorage.removeItem('prefill_job')
       setInitialData(JSON.parse(prefill))
@@ -65,6 +74,23 @@ export default function NuevoTrabajoPage() {
       scheduleJobReminder(job)
       // Recuerda el precio por categoría para prellenar el próximo trabajo.
       if (data.category && data.price) setLastPrice(data.category, Number(data.price))
+      // Si es duplicado, copia el desglose y los materiales al nuevo trabajo.
+      if (dupExtras) {
+        try {
+          if ((dupExtras.line_items?.length || 0) > 0 || dupExtras.discount || dupExtras.tax_rate) {
+            await updateJob(job.id, {
+              line_items: dupExtras.line_items || [],
+              discount: dupExtras.discount || 0,
+              tax_rate: dupExtras.tax_rate || 0,
+            })
+          }
+          for (const m of dupExtras.materials || []) {
+            await addJobMaterial({ job_id: job.id, name: m.name, quantity: m.quantity, unit_price: m.unit_price })
+          }
+        } catch {
+          // los datos básicos ya se crearon; los extras son secundarios
+        }
+      }
       toast.success('Trabajo creado exitosamente')
       router.replace(`/trabajos/${job.id}`)
     } catch {
