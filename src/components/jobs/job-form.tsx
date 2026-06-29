@@ -89,10 +89,11 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="title">Título *</Label>
+        <Label htmlFor="title">Título <span className="text-destructive">*</span></Label>
         <Input
           id="title"
           placeholder="Ej: Reparación de aire acondicionado"
+          className={errors.title ? 'border-destructive focus-visible:ring-destructive/40' : ''}
           {...register('title')}
         />
         {errors.title && (
@@ -101,7 +102,7 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="category">Categoría *</Label>
+        <Label htmlFor="category">Categoría <span className="text-destructive">*</span></Label>
         <Select
           defaultValue={initialData?.category || 'General/Varios'}
           onValueChange={(v) => setValue('category', v)}
@@ -206,13 +207,14 @@ export function JobForm({ initialData, clients, onSubmit, isLoading, submitLabel
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="price">Precio (USD) *</Label>
+          <Label htmlFor="price">Precio (USD) <span className="text-destructive">*</span></Label>
           <Input
             id="price"
             type="number"
             step="0.01"
             min="0"
             placeholder="0.00"
+            className={errors.price ? 'border-destructive focus-visible:ring-destructive/40' : ''}
             {...register('price', { valueAsNumber: true })}
           />
           {errors.price && (

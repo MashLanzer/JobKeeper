@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { JobCard } from '@/components/jobs/job-card'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { Skeleton } from '@/components/ui/skeleton'
+import { DetailSkeleton } from '@/components/shared/loading-skeleton'
 import { getClientWithJobs } from '@/services/clients'
 import { deleteClient, updateClient } from '@/services/clients'
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils'
@@ -217,12 +217,7 @@ export default function ClienteDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-      </div>
-    )
+    return <DetailSkeleton />
   }
 
   if (!client) {

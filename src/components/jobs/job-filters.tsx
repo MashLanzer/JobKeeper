@@ -13,7 +13,8 @@ interface JobFiltersProps {
 }
 
 export function JobFiltersBar({ filters, onChange }: JobFiltersProps) {
-  const hasFilters = filters.status || filters.category || filters.search
+  const hasFilters = filters.status || filters.category || filters.search || filters.paid !== undefined
+  const paidValue = filters.paid === undefined ? 'all' : filters.paid ? 'paid' : 'unpaid'
 
   return (
     <div className="space-y-3">
@@ -65,6 +66,22 @@ export function JobFiltersBar({ filters, onChange }: JobFiltersProps) {
             {JOB_CATEGORIES.map((c) => (
               <SelectItem key={c} value={c}>{c}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={paidValue}
+          onValueChange={(v) =>
+            onChange({ ...filters, paid: v === 'all' ? undefined : v === 'paid' })
+          }
+        >
+          <SelectTrigger className="h-9 min-w-[120px] text-xs">
+            <SelectValue placeholder="Cobro" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="paid">Cobrados</SelectItem>
+            <SelectItem value="unpaid">Sin cobrar</SelectItem>
           </SelectContent>
         </Select>
 

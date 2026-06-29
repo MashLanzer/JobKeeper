@@ -51,10 +51,11 @@ export function ClientForm({ initialData, onSubmit, isLoading, submitLabel = 'Gu
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Nombre *</Label>
+        <Label htmlFor="name">Nombre <span className="text-destructive">*</span></Label>
         <Input
           id="name"
           placeholder="Nombre completo"
+          className={errors.name ? 'border-destructive focus-visible:ring-destructive/40' : ''}
           {...register('name')}
         />
         {errors.name && (
@@ -98,6 +99,7 @@ export function ClientForm({ initialData, onSubmit, isLoading, submitLabel = 'Gu
           id="email"
           type="email"
           placeholder="correo@ejemplo.com"
+          className={errors.email ? 'border-destructive focus-visible:ring-destructive/40' : ''}
           {...register('email')}
         />
         {errors.email && (

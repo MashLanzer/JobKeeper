@@ -7,6 +7,7 @@ export interface JobFilters {
   search?: string
   from?: string
   to?: string
+  paid?: boolean
 }
 
 export async function getJobs(filters?: JobFilters): Promise<Job[]> {
@@ -35,6 +36,12 @@ export async function getJobs(filters?: JobFilters): Promise<Job[]> {
 
   if (filters?.to) {
     query = query.lte('scheduled_at', filters.to)
+  }
+
+  if (filters?.paid === true) {
+    query = query.not('paid_at', 'is', null)
+  } else if (filters?.paid === false) {
+    query = query.is('paid_at', null)
   }
 
   const { data, error } = await query

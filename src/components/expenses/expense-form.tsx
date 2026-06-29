@@ -50,10 +50,11 @@ export function ExpenseForm({ jobs = [], onSubmit, isLoading, submitLabel = 'Gua
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="description">Descripción *</Label>
+        <Label htmlFor="description">Descripción <span className="text-destructive">*</span></Label>
         <Input
           id="description"
           placeholder="Ej: Materiales para plomería"
+          className={errors.description ? 'border-destructive focus-visible:ring-destructive/40' : ''}
           {...register('description')}
         />
         {errors.description && (
@@ -63,13 +64,14 @@ export function ExpenseForm({ jobs = [], onSubmit, isLoading, submitLabel = 'Gua
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="amount">Monto (USD) *</Label>
+          <Label htmlFor="amount">Monto (USD) <span className="text-destructive">*</span></Label>
           <Input
             id="amount"
             type="number"
             step="0.01"
             min="0.01"
             placeholder="0.00"
+            className={errors.amount ? 'border-destructive focus-visible:ring-destructive/40' : ''}
             {...register('amount', { valueAsNumber: true })}
           />
           {errors.amount && (
@@ -78,7 +80,7 @@ export function ExpenseForm({ jobs = [], onSubmit, isLoading, submitLabel = 'Gua
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="date">Fecha *</Label>
+          <Label htmlFor="date">Fecha <span className="text-destructive">*</span></Label>
           <Input
             id="date"
             type="date"

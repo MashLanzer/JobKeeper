@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { StatusStepper } from '@/components/jobs/status-stepper'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { Skeleton } from '@/components/ui/skeleton'
+import { DetailSkeleton } from '@/components/shared/loading-skeleton'
 import { useJob } from '@/hooks/use-jobs'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { getSettings, type BusinessSettings } from '@/services/settings'
@@ -120,6 +120,7 @@ export default function JobDetailPage() {
       setMatQty('1')
       setMatPrice('')
       setMatLinkedId(null)
+      haptic('light')
       toast.success('Material agregado')
     } catch {
       toast.error('No se pudo agregar el material')
@@ -132,6 +133,7 @@ export default function JobDetailPage() {
     try {
       await deleteJobMaterial(mId)
       setJobMaterials((prev) => prev.filter((m) => m.id !== mId))
+      haptic('light')
     } catch {
       toast.error('No se pudo eliminar')
     }
@@ -166,6 +168,7 @@ export default function JobDetailPage() {
     try {
       await uploadPhoto(id, file)
       setPhotos(await getPhotos(id))
+      haptic('light')
       toast.success('Foto agregada')
     } catch {
       toast.error('No se pudo subir la foto')
@@ -178,6 +181,7 @@ export default function JobDetailPage() {
     try {
       await deletePhoto(photo)
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id))
+      haptic('light')
     } catch {
       toast.error('No se pudo eliminar la foto')
     }
@@ -205,6 +209,7 @@ export default function JobDetailPage() {
       if (job && collected + amount >= Number(job.price)) {
         await update({ paid_at: new Date().toISOString() })
       }
+      haptic('success')
       toast.success('Pago registrado')
     } catch {
       toast.error('No se pudo registrar el pago')
@@ -215,8 +220,20 @@ export default function JobDetailPage() {
 
   const handleDeletePayment = async (paymentId: string) => {
     try {
+      const removed = payments.find((p) => p.id === paymentId)
       await deletePayment(paymentId)
-      setPayments((prev) => prev.filter((p) => p.id !== paymentId))
+      const remaining = payments.filter((p) => p.id !== paymentId)
+      setPayments(remaining)
+      haptic('light')
+      // Coherencia con el modelo de cobro: si al quitar este pago el trabajo ya
+      // no está cubierto por completo, deja de estar "cobrado" (sale del ingreso).
+      if (job?.paid_at && removed) {
+        const newCollected = Number(job.deposit) + remaining.reduce((s, p) => s + Number(p.amount), 0)
+        if (newCollected < Number(job.price)) {
+          await update({ paid_at: null })
+          toast.info('El trabajo volvió a "sin cobrar"')
+        }
+      }
     } catch {
       toast.error('No se pudo eliminar el pago')
     }
@@ -858,15 +875,7 @@ export default function JobDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-4 page-transition">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-md" />
-          <Skeleton className="h-7 w-48" />
-        </div>
-        <Skeleton className="h-48 w-full rounded-xl" />
-      </div>
-    )
+    return <DetailSkeleton />
   }
 
   if (error || !job) {
@@ -1186,6 +1195,7 @@ export default function JobDetailPage() {
               setSignature(dataUrl)
               try {
                 await update({ signature: dataUrl })
+                haptic('success')
                 toast.success('Firma guardada')
               } catch {
                 toast.error('No se pudo guardar la firma')
@@ -1238,13 +1248,20 @@ export default function JobDetailPage() {
                     alt="Foto del trabajo"
                     className="w-full h-full object-cover rounded-lg border border-border"
                   />
-                  <button
-                    onClick={() => handleDeletePhoto(photo)}
-                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"
-                    aria-label="Eliminar foto"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  <ConfirmDialog
+                    title="¿Eliminar foto?"
+                    description="Esta acción no se puede deshacer."
+                    confirmLabel="Eliminar"
+                    onConfirm={() => handleDeletePhoto(photo)}
+                    trigger={
+                      <button
+                        className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"
+                        aria-label="Eliminar foto"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    }
+                  />
                 </div>
               ))}
             </div>
@@ -1381,6 +1398,10 @@ export default function JobDetailPage() {
             )}
           </div>
 
+          {jobMaterials.length === 0 && (
+            <p className="text-xs text-muted-foreground mb-3">Aún no hay materiales registrados.</p>
+          )}
+
           {jobMaterials.length > 0 && (
             <div className="space-y-1.5 mb-3">
               {jobMaterials.map((m) => (
@@ -1390,13 +1411,20 @@ export default function JobDetailPage() {
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="font-medium">{formatCurrency(Number(m.quantity) * Number(m.unit_price))}</span>
-                    <button
-                      onClick={() => handleDeleteMaterial(m.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                      aria-label="Eliminar material"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <ConfirmDialog
+                      title="¿Eliminar material?"
+                      description="Se quitará del trabajo."
+                      confirmLabel="Eliminar"
+                      onConfirm={() => handleDeleteMaterial(m.id)}
+                      trigger={
+                        <button
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label="Eliminar material"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      }
+                    />
                   </span>
                 </div>
               ))}
@@ -1417,10 +1445,10 @@ export default function JobDetailPage() {
                 </SelectContent>
               </Select>
             )}
-            <Input placeholder="Material" value={matName} onChange={(e) => setMatName(e.target.value)} />
+            <Input placeholder="Material" value={matName} onChange={(e) => setMatName(e.target.value)} disabled={savingMat} />
             <div className="grid grid-cols-2 gap-2">
-              <Input type="number" min="0" step="0.01" placeholder="Cantidad" value={matQty} onChange={(e) => setMatQty(e.target.value)} />
-              <Input type="number" min="0" step="0.01" placeholder="Precio unit." value={matPrice} onChange={(e) => setMatPrice(e.target.value)} />
+              <Input type="number" min="0" step="0.01" placeholder="Cantidad" value={matQty} onChange={(e) => setMatQty(e.target.value)} disabled={savingMat} />
+              <Input type="number" min="0" step="0.01" placeholder="Precio unit." value={matPrice} onChange={(e) => setMatPrice(e.target.value)} disabled={savingMat} />
             </div>
             <Button onClick={handleAddMaterial} size="sm" className="w-full" disabled={savingMat}>
               <Plus className="h-4 w-4 mr-1" />
@@ -1450,6 +1478,9 @@ export default function JobDetailPage() {
             )}
 
             {/* Pagos registrados */}
+            {payments.length === 0 && job.deposit === 0 && (
+              <p className="text-xs text-muted-foreground">Sin pagos registrados aún.</p>
+            )}
             {payments.map((p) => (
               <div key={p.id} className="flex justify-between items-center text-sm group">
                 <span className="text-muted-foreground">
@@ -1458,13 +1489,20 @@ export default function JobDetailPage() {
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="font-medium">{formatCurrency(Number(p.amount))}</span>
-                  <button
-                    onClick={() => handleDeletePayment(p.id)}
-                    className="text-muted-foreground hover:text-destructive"
-                    aria-label="Eliminar pago"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <ConfirmDialog
+                    title="¿Eliminar pago?"
+                    description="Se restará del total cobrado y podría volver el trabajo a 'sin cobrar'."
+                    confirmLabel="Eliminar"
+                    onConfirm={() => handleDeletePayment(p.id)}
+                    trigger={
+                      <button
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label="Eliminar pago"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    }
+                  />
                 </span>
               </div>
             ))}
@@ -1517,10 +1555,11 @@ export default function JobDetailPage() {
                   placeholder="Monto"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
+                  disabled={savingPayment}
                 />
-                <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+                <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} disabled={savingPayment} />
               </div>
-              <Select value={payMethod} onValueChange={setPayMethod}>
+              <Select value={payMethod} onValueChange={setPayMethod} disabled={savingPayment}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

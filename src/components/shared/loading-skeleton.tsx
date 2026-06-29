@@ -33,6 +33,23 @@ export function StatCardSkeleton() {
   )
 }
 
+export function DetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 page-transition">
+      {/* Header: botón atrás + título */}
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-md" />
+        <Skeleton className="h-7 w-48" />
+      </div>
+      {/* Bloque de estado */}
+      <Skeleton className="h-16 w-full rounded-xl" />
+      {/* Tarjetas de contenido */}
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="h-32 w-full rounded-xl" />
+    </div>
+  )
+}
+
 export function DashboardSkeleton() {
   return (
     <div className="space-y-6">
