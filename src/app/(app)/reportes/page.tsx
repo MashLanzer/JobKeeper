@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Download, FileText, Receipt } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, FileText, Receipt, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,9 +21,13 @@ export default function ReportesPage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const [loading, setLoading] = useState(false)
+  // Acción en curso (para mostrar spinner en el botón correcto). null = nada.
+  const [busy, setBusy] = useState<string | null>(null)
+  const loading = busy !== null
   const [businessName, setBusinessName] = useState('WorkLedger')
   const [stats, setStats] = useState<BusinessStats | null>(null)
+
+  const atCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
 
   useEffect(() => {
     getSettings().then((s) => setBusinessName(businessNameOf(s))).catch(() => {})
@@ -41,7 +45,7 @@ export default function ReportesPage() {
 
   const exportJobsPDF = async () => {
     try {
-      setLoading(true)
+      setBusy('jobsPdf')
       const jobs = await getJobsByMonth(year, month)
 
       const { default: jsPDF } = await import('jspdf')
@@ -50,7 +54,7 @@ export default function ReportesPage() {
       const doc = new jsPDF()
 
       doc.setFontSize(18)
-      doc.text('WorkLedger - Reporte de Trabajos', 14, 20)
+      doc.text(`${businessName} — Reporte de Trabajos`, 14, 20)
 
       doc.setFontSize(12)
       doc.text(`Período: ${MONTH_NAMES[month - 1]} ${year}`, 14, 30)
@@ -86,13 +90,13 @@ export default function ReportesPage() {
       console.error(err)
       toast.error('Error al generar PDF')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
   const exportExpensesPDF = async () => {
     try {
-      setLoading(true)
+      setBusy('expPdf')
       const expenses = await getExpensesByMonth(year, month)
 
       const { default: jsPDF } = await import('jspdf')
@@ -101,7 +105,7 @@ export default function ReportesPage() {
       const doc = new jsPDF()
 
       doc.setFontSize(18)
-      doc.text('WorkLedger - Reporte de Gastos', 14, 20)
+      doc.text(`${businessName} — Reporte de Gastos`, 14, 20)
 
       doc.setFontSize(12)
       doc.text(`Período: ${MONTH_NAMES[month - 1]} ${year}`, 14, 30)
@@ -130,13 +134,13 @@ export default function ReportesPage() {
       console.error(err)
       toast.error('Error al generar PDF')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
   const exportJobsCSV = async () => {
     try {
-      setLoading(true)
+      setBusy('jobsCsv')
       const jobs = await getJobsByMonth(year, month)
 
       const headers = ['ID', 'Título', 'Cliente', 'Categoría', 'Estado', 'Precio', 'Anticipo', 'Fecha Programada', 'Fecha Completado', 'Método de Pago', 'Notas']
@@ -166,13 +170,13 @@ export default function ReportesPage() {
     } catch {
       toast.error('Error al exportar CSV')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
   const exportExpensesCSV = async () => {
     try {
-      setLoading(true)
+      setBusy('expCsv')
       const expenses = await getExpensesByMonth(year, month)
 
       const headers = ['ID', 'Descripción', 'Categoría', 'Monto', 'Fecha', 'Trabajo', 'Notas']
@@ -198,13 +202,13 @@ export default function ReportesPage() {
     } catch {
       toast.error('Error al exportar CSV')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
   const exportMonthlySummaryPDF = async () => {
     try {
-      setLoading(true)
+      setBusy('summary')
       const [summary, jobs] = await Promise.all([
         getFinanceSummary(year, month),
         getJobsByMonth(year, month),
@@ -278,13 +282,13 @@ export default function ReportesPage() {
       console.error(err)
       toast.error('Error al generar el resumen')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
   const exportYearReportPDF = async () => {
     try {
-      setLoading(true)
+      setBusy('year')
       const report = await getYearReport(year)
 
       const { default: jsPDF } = await import('jspdf')
@@ -363,7 +367,7 @@ export default function ReportesPage() {
       console.error(err)
       toast.error('Error al generar el reporte anual')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
@@ -380,7 +384,7 @@ export default function ReportesPage() {
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <span className="font-semibold">{MONTH_NAMES[month - 1]} {year}</span>
-        <Button variant="ghost" size="icon" onClick={nextMonth}>
+        <Button variant="ghost" size="icon" onClick={nextMonth} disabled={atCurrentMonth}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
@@ -439,8 +443,8 @@ export default function ReportesPage() {
             Un PDF con ingresos, gastos, ganancia neta y conteo de trabajos de {MONTH_NAMES[month - 1]} {year}. Ideal para tu control o tu contador.
           </p>
           <Button onClick={exportMonthlySummaryPDF} disabled={loading} className="w-full">
-            <Download className="h-4 w-4 mr-2" />
-            Generar resumen PDF
+            {busy === 'summary' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            {busy === 'summary' ? 'Generando…' : 'Generar resumen PDF'}
           </Button>
         </CardContent>
       </Card>
@@ -458,8 +462,8 @@ export default function ReportesPage() {
             Análisis del año completo: ingresos y gastos mes a mes, totales y rentabilidad por categoría.
           </p>
           <Button onClick={exportYearReportPDF} disabled={loading} variant="outline" className="w-full">
-            <Download className="h-4 w-4 mr-2" />
-            Generar reporte anual PDF
+            {busy === 'year' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            {busy === 'year' ? 'Generando…' : 'Generar reporte anual PDF'}
           </Button>
         </CardContent>
       </Card>
@@ -483,7 +487,7 @@ export default function ReportesPage() {
               className="flex-1"
               variant="outline"
             >
-              <Download className="h-4 w-4 mr-2" />
+              {busy === 'jobsPdf' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
               PDF
             </Button>
             <Button
@@ -492,7 +496,7 @@ export default function ReportesPage() {
               className="flex-1"
               variant="outline"
             >
-              <Download className="h-4 w-4 mr-2" />
+              {busy === 'jobsCsv' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
               CSV
             </Button>
           </div>
@@ -518,7 +522,7 @@ export default function ReportesPage() {
               className="flex-1"
               variant="outline"
             >
-              <Download className="h-4 w-4 mr-2" />
+              {busy === 'expPdf' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
               PDF
             </Button>
             <Button
@@ -527,7 +531,7 @@ export default function ReportesPage() {
               className="flex-1"
               variant="outline"
             >
-              <Download className="h-4 w-4 mr-2" />
+              {busy === 'expCsv' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
               CSV
             </Button>
           </div>
