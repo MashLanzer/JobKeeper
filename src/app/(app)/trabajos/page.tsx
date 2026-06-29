@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { Plus, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/shared/page-header'
@@ -13,7 +14,11 @@ import { JobFiltersBar } from '@/components/jobs/job-filters'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useJobs } from '@/hooks/use-jobs'
+import { updateJob } from '@/services/jobs'
+import { getPayments, addPayment } from '@/services/payments'
+import { haptic } from '@/lib/haptics'
 import type { JobFilters } from '@/services/jobs'
+import type { Job } from '@/types'
 
 type SortKey = 'reciente' | 'precio' | 'fecha'
 
@@ -44,6 +49,25 @@ export default function TrabajosPage() {
     }
     return 0 // "reciente": respeta el orden del servidor (created_at desc)
   })
+
+  // Marca cobrado desde la tarjeta: registra el saldo pendiente (si lo hay)
+  // y fija paid_at, considerando los pagos ya existentes.
+  const handleMarkPaid = async (job: Job) => {
+    try {
+      const pays = await getPayments(job.id).catch(() => [])
+      const collected = Number(job.deposit) + pays.reduce((s, p) => s + Number(p.amount), 0)
+      const pending = Number(job.price) - collected
+      if (pending > 0) {
+        await addPayment({ job_id: job.id, amount: pending, method: job.payment_method || 'efectivo' })
+      }
+      await updateJob(job.id, { paid_at: new Date().toISOString() })
+      haptic('success')
+      toast.success('Trabajo marcado como cobrado')
+      refetch()
+    } catch {
+      toast.error('No se pudo marcar como cobrado')
+    }
+  }
 
   return (
     <PullToRefresh onRefresh={refetch}>
@@ -106,7 +130,7 @@ export default function TrabajosPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {sortedJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <JobCard key={job.id} job={job} onMarkPaid={handleMarkPaid} />
           ))}
         </div>
       )}

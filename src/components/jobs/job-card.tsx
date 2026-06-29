@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Clock, DollarSign, User } from 'lucide-react'
+import { MapPin, Clock, DollarSign, User, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { formatCurrency, formatDateTime, cn } from '@/lib/utils'
 import { categoryStyle } from '@/lib/categories'
@@ -10,6 +11,7 @@ import type { Job } from '@/types'
 
 interface JobCardProps {
   job: Job
+  onMarkPaid?: (job: Job) => void
 }
 
 function PaymentBadge({ price, deposit, paidAt }: { price: number; deposit: number; paidAt?: string | null }) {
@@ -43,8 +45,9 @@ function isOverdue(job: Job) {
   )
 }
 
-export function JobCard({ job }: JobCardProps) {
+export function JobCard({ job, onMarkPaid }: JobCardProps) {
   const overdue = isOverdue(job)
+  const canCollect = onMarkPaid && job.status === 'completado' && !job.paid_at
   return (
     <Link href={`/trabajos/${job.id}`} className="block">
       <Card className={cn(
@@ -112,6 +115,22 @@ export function JobCard({ job }: JobCardProps) {
               )}
             </div>
           </div>
+
+          {canCollect && (
+            <Button
+              size="sm"
+              className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white"
+              onClick={(e) => {
+                // Evita navegar al detalle al tocar el botón dentro del Link.
+                e.preventDefault()
+                e.stopPropagation()
+                onMarkPaid!(job)
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />
+              Marcar cobrado
+            </Button>
+          )}
         </CardContent>
       </Card>
     </Link>
