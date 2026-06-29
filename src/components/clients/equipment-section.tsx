@@ -42,6 +42,7 @@ export function EquipmentSection({ clientId, jobs = [] }: { clientId: string; jo
   const [editing, setEditing] = useState<Equipment | null>(null)
   const [form, setForm] = useState<EquipmentInput>(EMPTY)
   const [saving, setSaving] = useState(false)
+  const [labelError, setLabelError] = useState(false)
 
   useEffect(() => {
     getEquipmentForClient(clientId).then(setItems).catch(() => {})
@@ -50,11 +51,13 @@ export function EquipmentSection({ clientId, jobs = [] }: { clientId: string; jo
   const openNew = () => {
     setEditing(null)
     setForm({ ...EMPTY, client_id: clientId })
+    setLabelError(false)
     setOpen(true)
   }
 
   const openEdit = (e: Equipment) => {
     setEditing(e)
+    setLabelError(false)
     setForm({
       client_id: clientId,
       label: e.label,
@@ -71,9 +74,11 @@ export function EquipmentSection({ clientId, jobs = [] }: { clientId: string; jo
 
   const handleSave = async () => {
     if (!form.label.trim()) {
+      setLabelError(true)
       toast.error('Ponle un nombre al equipo (ej. "Sala")')
       return
     }
+    setLabelError(false)
     setSaving(true)
     try {
       const payload = { ...form, install_date: form.install_date || null }
@@ -177,12 +182,19 @@ export function EquipmentSection({ clientId, jobs = [] }: { clientId: string; jo
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Nombre / ubicación *</Label>
+              <Label className="text-xs">Nombre / ubicación <span className="text-destructive">*</span></Label>
               <Input
                 placeholder='Ej: "Sala" o "Minisplit recámara"'
                 value={form.label}
-                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, label: e.target.value }))
+                  if (labelError && e.target.value.trim()) setLabelError(false)
+                }}
+                className={labelError ? 'border-destructive focus-visible:ring-destructive/40' : ''}
               />
+              {labelError && (
+                <p className="text-xs text-destructive">Este campo es requerido.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">

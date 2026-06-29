@@ -1531,6 +1531,7 @@ export default function JobDetailPage() {
             ))}
 
             <Separator />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 pt-1">Cobro</p>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total cobrado</span>
               <span className="font-medium text-money">{formatCurrency(collected)}</span>
@@ -1545,6 +1546,7 @@ export default function JobDetailPage() {
             {(materialsCost > 0 || expensesTotal > 0) && (
               <>
                 <Separator />
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 pt-1">Rentabilidad</p>
                 {materialsCost > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Materiales</span>

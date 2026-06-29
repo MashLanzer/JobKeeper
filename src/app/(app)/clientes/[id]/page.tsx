@@ -381,7 +381,7 @@ export default function ClienteDetailPage() {
             )
           })()}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="maintMonths" className="text-xs">Cada (meses)</Label>
               <Input
