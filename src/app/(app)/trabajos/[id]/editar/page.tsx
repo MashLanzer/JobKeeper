@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useJob } from '@/hooks/use-jobs'
 import { useClients } from '@/hooks/use-clients'
 import { updateJob } from '@/services/jobs'
+import { getPayments } from '@/services/payments'
 import { scheduleJobReminder } from '@/lib/local-notifications'
 
 export default function EditarTrabajoPage() {
@@ -24,13 +25,26 @@ export default function EditarTrabajoPage() {
         ? new Date().toISOString()
         : job?.completed_at
 
-      await updateJob(id, {
+      // Coherencia del cobro: si el nuevo precio supera lo realmente cobrado
+      // (anticipo + pagos), el trabajo deja de estar "cobrado".
+      const patch: Record<string, unknown> = {
         ...data,
         client_id: data.client_id || null,
         scheduled_at: data.scheduled_at || null,
         payment_method: data.payment_method || null,
         completed_at: data.status === 'completado' ? completedAt : null,
-      })
+      }
+      if (job?.paid_at) {
+        const paymentsTotal = (await getPayments(id).catch(() => []))
+          .reduce((s, p) => s + Number(p.amount), 0)
+        const collected = Number(data.deposit || 0) + paymentsTotal
+        if (Number(data.price || 0) > collected) {
+          patch.paid_at = null
+          toast.info('El precio subió: el trabajo volvió a "sin cobrar"')
+        }
+      }
+
+      await updateJob(id, patch)
       // Reprograma (o cancela) el recordatorio según la nueva fecha.
       scheduleJobReminder({ id, title: data.title, scheduled_at: data.scheduled_at || null })
       toast.success('Trabajo actualizado')
