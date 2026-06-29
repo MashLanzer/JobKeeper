@@ -126,6 +126,24 @@ export async function getJobsByMonth(year: number, month: number): Promise<Job[]
   return data as Job[]
 }
 
+/** Trabajos cobrados en un mes (por paid_at). Coincide con el ingreso del mes. */
+export async function getPaidJobsByMonth(year: number, month: number): Promise<Job[]> {
+  const supabase = createClient()
+  const start = new Date(year, month - 1, 1).toISOString()
+  const end = new Date(year, month, 0, 23, 59, 59).toISOString()
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*, client:clients(id, name)')
+    .not('paid_at', 'is', null)
+    .gte('paid_at', start)
+    .lte('paid_at', end)
+    .order('paid_at', { ascending: false })
+
+  if (error) throw error
+  return data as Job[]
+}
+
 export async function getTodayJobs(): Promise<Job[]> {
   const supabase = createClient()
   const now = new Date()

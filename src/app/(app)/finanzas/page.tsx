@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCardSkeleton } from '@/components/shared/loading-skeleton'
 import { getFinanceSummary, getExpensesByMonth } from '@/services/expenses'
-import { getJobsByMonth, getIncomeTrend } from '@/services/jobs'
+import { getPaidJobsByMonth, getIncomeTrend } from '@/services/jobs'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -94,10 +94,11 @@ export default function FinanzasPage() {
         setLoading(true)
         const [fin, jobs] = await Promise.all([
           getFinanceSummary(year, month),
-          getJobsByMonth(year, month),
+          getPaidJobsByMonth(year, month),
         ])
         setSummary(fin)
-        setRecentJobs(jobs.filter((j: any) => j.status === 'completado'))
+        // Lo cobrado del mes: coincide con el total de "Ingresos".
+        setRecentJobs(jobs)
       } catch (err) {
         console.error(err)
       } finally {
@@ -120,6 +121,9 @@ export default function FinanzasPage() {
     ? Math.max(...Object.values(summary.expensesByCategory), 1)
     : 1
 
+  // No hay cobros en meses futuros: no dejamos avanzar más allá del mes actual.
+  const atCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
+
   return (
     <div className="space-y-6 page-transition">
       <PageHeader title="Finanzas" />
@@ -130,7 +134,7 @@ export default function FinanzasPage() {
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <span className="font-semibold">{MONTH_NAMES[month - 1]} {year}</span>
-        <Button variant="ghost" size="icon" onClick={nextMonth}>
+        <Button variant="ghost" size="icon" onClick={nextMonth} disabled={atCurrentMonth}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
@@ -149,7 +153,7 @@ export default function FinanzasPage() {
                   <div className="rounded-lg p-1.5 bg-green-500/10">
                     <TrendingUp className="h-4 w-4 text-green-500" />
                   </div>
-                  <p className="text-xs text-muted-foreground">Ingresos</p>
+                  <p className="text-xs text-muted-foreground">Ingresos (cobrado)</p>
                 </div>
                 <p className="text-xl font-bold text-money">
                   {formatCurrency(summary?.totalIncome || 0)}
@@ -229,31 +233,33 @@ export default function FinanzasPage() {
               <TabsTrigger value="gastos" className="flex-1">Gastos</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ingresos" className="space-y-5 mt-4">
+            <TabsContent value="ingresos" className="mt-4">
               {recentJobs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
-                  Sin ingresos este mes
+                  Sin cobros este mes
                 </p>
               ) : (
-                recentJobs.map((job) => (
-                  <Link key={job.id} href={`/trabajos/${job.id}`}>
-                    <Card className="hover:border-primary/50 transition-colors">
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{job.title}</p>
-                          {job.completed_at && (
-                            <p className="text-xs text-muted-foreground">
-                              {formatDate(job.completed_at)}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-sm font-semibold text-money ml-3">
-                          +{formatCurrency(job.price)}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))
+                <div className="flex flex-col gap-3">
+                  {recentJobs.map((job) => (
+                    <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
+                      <Card className="hover:border-primary/50 transition-colors">
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{job.title}</p>
+                            {job.paid_at && (
+                              <p className="text-xs text-muted-foreground">
+                                Cobrado · {formatDate(job.paid_at)}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-money ml-3">
+                            +{formatCurrency(job.price)}
+                          </span>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
               )}
             </TabsContent>
 
