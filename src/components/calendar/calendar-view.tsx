@@ -2,13 +2,19 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Plus, CalendarCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CalendarCheck, CalendarClock, Navigation } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { categoryStyle } from '@/lib/categories'
+import { updateJob } from '@/services/jobs'
+import { scheduleJobReminder } from '@/lib/local-notifications'
 import Link from 'next/link'
 import type { Job } from '@/types'
 
@@ -17,7 +23,24 @@ interface CalendarViewProps {
   year: number
   month: number
   onMonthChange: (year: number, month: number) => void
+  onChanged?: () => void
 }
+
+const isOverdue = (job: Job) =>
+  !!job.scheduled_at &&
+  new Date(job.scheduled_at) < new Date() &&
+  (job.status === 'pendiente' || job.status === 'en_progreso')
+
+const byTime = (a: Job, b: Job) => {
+  const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
+  const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
+  return ta - tb
+}
+
+const timeOf = (job: Job) =>
+  job.scheduled_at
+    ? new Date(job.scheduled_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    : null
 
 const DAYS_OF_WEEK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -36,9 +59,12 @@ const STATUS_COLORS: Record<string, string> = {
 const dateKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewProps) {
+export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: CalendarViewProps) {
   const router = useRouter()
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [reschedJob, setReschedJob] = useState<Job | null>(null)
+  const [reschedValue, setReschedValue] = useState('')
+  const [reschedSaving, setReschedSaving] = useState(false)
   const [view, setView] = useState<'mes' | 'semana'>('mes')
   const [colorBy, setColorBy] = useState<'estado' | 'categoria'>('estado')
 
@@ -109,7 +135,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
     return map
   }, [jobs, year, month])
 
-  const selectedDayJobs = selectedDay ? jobsByDay[selectedDay] || [] : []
+  const selectedDayJobs = (selectedDay ? jobsByDay[selectedDay] || [] : []).slice().sort(byTime)
 
   const prevMonth = () => {
     if (month === 1) {
@@ -150,6 +176,42 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
   }
 
   const selectedDayTotal = selectedDayJobs.reduce((s, j) => s + Number(j.price), 0)
+
+  // Reagendar: abre el diálogo con la fecha actual del trabajo precargada.
+  const openReschedule = (job: Job) => {
+    const base = job.scheduled_at ? new Date(job.scheduled_at) : new Date()
+    // Formato datetime-local (sin segundos ni zona).
+    const local = new Date(base.getTime() - base.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+    setReschedValue(local)
+    setReschedJob(job)
+  }
+
+  const handleReschedule = async () => {
+    if (!reschedJob || !reschedValue) return
+    setReschedSaving(true)
+    try {
+      const iso = new Date(reschedValue).toISOString()
+      await updateJob(reschedJob.id, { scheduled_at: iso })
+      scheduleJobReminder({ id: reschedJob.id, title: reschedJob.title, scheduled_at: iso })
+      toast.success('Trabajo reagendado')
+      setReschedJob(null)
+      onChanged?.()
+    } catch {
+      toast.error('No se pudo reagendar')
+    } finally {
+      setReschedSaving(false)
+    }
+  }
+
+  // Abre las direcciones de los trabajos del día como ruta en Google Maps.
+  const openDayRoute = () => {
+    const addresses = selectedDayJobs.filter((j) => j.address).map((j) => j.address as string)
+    if (!addresses.length) return
+    window.open(
+      `https://www.google.com/maps/dir/${addresses.map((a) => encodeURIComponent(a)).join('/')}`,
+      '_blank'
+    )
+  }
 
   const calendarDays: (number | null)[] = []
   for (let i = 0; i < firstDayOfMonth; i++) {
@@ -223,7 +285,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
           {/* Week day rows */}
           <div className="space-y-2">
             {weekDays.map((d) => {
-              const dayJobs = jobsByDate[dateKey(d)] || []
+              const dayJobs = (jobsByDate[dateKey(d)] || []).slice().sort(byTime)
               const isToday = dateKey(d) === dateKey(today)
               return (
                 <div
@@ -266,6 +328,9 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                             <span
                               className={cn('h-2 w-2 rounded-full flex-shrink-0', dotColor(job))}
                             />
+                            {timeOf(job) && (
+                              <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">{timeOf(job)}</span>
+                            )}
                             <span className="truncate">
                               {job.title}
                               {job.client?.name ? <span className="text-muted-foreground"> · {job.client.name}</span> : null}
@@ -332,6 +397,7 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
             const isToday = isCurrentMonth && today.getDate() === day
             const isSelected = selectedDay === day
             const hasJobs = dayJobs.length > 0
+            const hasOverdue = dayJobs.some(isOverdue)
 
             return (
               <button
@@ -363,6 +429,9 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                     ))}
                   </div>
                 )}
+                {hasOverdue && (
+                  <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />
+                )}
               </button>
             )
           })}
@@ -381,15 +450,23 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
             )}
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => scheduleOnDay(new Date(year, month - 1, selectedDay))}
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Agendar este día
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => scheduleOnDay(new Date(year, month - 1, selectedDay))}
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Agendar este día
+            </Button>
+            {selectedDayJobs.some((j) => j.address) && (
+              <Button variant="outline" size="sm" onClick={openDayRoute} aria-label="Ruta del día">
+                <Navigation className="h-4 w-4 mr-1.5" />
+                Ruta
+              </Button>
+            )}
+          </div>
 
           {selectedDayJobs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sin trabajos este día</p>
@@ -421,6 +498,19 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
                           {formatCurrency(job.price)}
                         </span>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 mt-2 -ml-1 text-xs text-muted-foreground"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          openReschedule(job)
+                        }}
+                      >
+                        <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
+                        Reagendar
+                      </Button>
                     </CardContent>
                   </Card>
                 </Link>
@@ -447,6 +537,32 @@ export function CalendarView({ jobs, year, month, onMonthChange }: CalendarViewP
       </div>
       </>
       )}
+
+      {/* Reagendar trabajo */}
+      <Dialog open={!!reschedJob} onOpenChange={(o) => !o && setReschedJob(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reagendar trabajo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {reschedJob && (
+              <p className="text-sm text-muted-foreground truncate">{reschedJob.title}</p>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nueva fecha y hora</Label>
+              <Input
+                type="datetime-local"
+                value={reschedValue}
+                onChange={(e) => setReschedValue(e.target.value)}
+                disabled={reschedSaving}
+              />
+            </div>
+            <Button onClick={handleReschedule} className="w-full" disabled={reschedSaving || !reschedValue}>
+              {reschedSaving ? 'Guardando…' : 'Guardar nueva fecha'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

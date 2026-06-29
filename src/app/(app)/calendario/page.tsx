@@ -13,6 +13,7 @@ export default function CalendarioPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -28,7 +29,7 @@ export default function CalendarioPage() {
     }
 
     loadJobs()
-  }, [year, month])
+  }, [year, month, refreshKey])
 
   const handleMonthChange = (newYear: number, newMonth: number) => {
     setYear(newYear)
@@ -47,6 +48,7 @@ export default function CalendarioPage() {
         year={year}
         month={month}
         onMonthChange={handleMonthChange}
+        onChanged={() => setRefreshKey((k) => k + 1)}
       />
     </div>
   )
