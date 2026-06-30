@@ -14,6 +14,7 @@ export interface Client {
   type?: ClientType | null
   maintenance_months?: number | null
   last_service_date?: string | null
+  tags?: string[] | null
   created_at: string
   updated_at: string
 }
@@ -51,6 +52,9 @@ export interface Job {
   equipment_id?: string | null
   priority?: 'normal' | 'urgente' | null
   quote_status?: 'enviada' | 'aceptada' | 'rechazada' | null
+  tags?: string[] | null
+  clock_in?: string | null
+  clock_out?: string | null
   created_at: string
   updated_at: string
 }

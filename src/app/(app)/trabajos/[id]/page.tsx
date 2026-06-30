@@ -12,7 +12,7 @@ import { StatusStepper } from '@/components/jobs/status-stepper'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DetailSkeleton } from '@/components/shared/loading-skeleton'
 import { useJob } from '@/hooks/use-jobs'
-import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDateTime, formatDate, cn } from '@/lib/utils'
 import { getSettings, type BusinessSettings } from '@/services/settings'
 import { sharePdf } from '@/lib/share-pdf'
 import { nextFolio } from '@/lib/folio'
@@ -58,6 +58,7 @@ export default function JobDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [generatingQuote, setGeneratingQuote] = useState(false)
   const [generatingOrder, setGeneratingOrder] = useState(false)
+  const [, setTick] = useState(0) // fuerza re-render para el cronómetro en curso
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [signature, setSignature] = useState<string | null>(null)
@@ -330,6 +331,14 @@ export default function JobDetailPage() {
   useEffect(() => {
     getSettings().then(setSettings).catch(() => {})
   }, [])
+
+  // Tick cada segundo mientras el cronómetro esté en curso.
+  useEffect(() => {
+    if (job?.clock_in && !job?.clock_out) {
+      const t = setInterval(() => setTick((x) => x + 1), 1000)
+      return () => clearInterval(t)
+    }
+  }, [job?.clock_in, job?.clock_out])
 
   const toggleChecklistItem = async (index: number) => {
     const next = checklist.map((it, i) => (i === index ? { ...it, done: !it.done } : it))
@@ -999,6 +1008,35 @@ export default function JobDetailPage() {
     }
   }
 
+  // Cronómetro de trabajo (horas en sitio)
+  const startTimer = async () => {
+    try {
+      await update({ clock_in: new Date().toISOString(), clock_out: null })
+      haptic('medium')
+    } catch {
+      toast.error('No se pudo iniciar el cronómetro')
+    }
+  }
+  const stopTimer = async () => {
+    try {
+      await update({ clock_out: new Date().toISOString() })
+      haptic('success')
+    } catch {
+      toast.error('No se pudo detener el cronómetro')
+    }
+  }
+  const resetTimer = async () => {
+    try {
+      await update({ clock_in: null, clock_out: null })
+    } catch {
+      toast.error('No se pudo reiniciar')
+    }
+  }
+  const fmtDur = (ms: number) => {
+    const totalMin = Math.max(0, Math.floor(ms / 60000))
+    return `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`
+  }
+
   const handleRequestReview = async () => {
     const link = (settings.review_link || '').trim()
     if (!link) {
@@ -1136,6 +1174,49 @@ export default function JobDetailPage() {
           <span className="text-sm font-medium text-money">Cobrado</span>
         </div>
       )}
+
+      {/* Cronómetro de trabajo */}
+      {(() => {
+        const running = !!job.clock_in && !job.clock_out
+        const done = !!job.clock_in && !!job.clock_out
+        const elapsed = job.clock_in
+          ? (job.clock_out ? new Date(job.clock_out).getTime() : Date.now()) - new Date(job.clock_in).getTime()
+          : 0
+        return (
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Clock className={cn('h-4 w-4', running ? 'text-primary' : 'text-muted-foreground')} />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    {running ? 'En curso' : done ? 'Tiempo trabajado' : 'Cronómetro'}
+                  </p>
+                  {(running || done) && (
+                    <p className={cn('text-xs', running ? 'text-primary' : 'text-muted-foreground')}>{fmtDur(elapsed)}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {!job.clock_in && (
+                  <Button size="sm" variant="outline" onClick={startTimer}>
+                    <Play className="h-4 w-4 mr-1.5" /> Iniciar
+                  </Button>
+                )}
+                {running && (
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={stopTimer}>
+                    Detener
+                  </Button>
+                )}
+                {done && (
+                  <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={resetTimer}>
+                    Reiniciar
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Tabbed sections */}
       <Tabs defaultValue="detalles" className="w-full">
