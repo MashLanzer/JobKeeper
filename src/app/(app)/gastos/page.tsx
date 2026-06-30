@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Receipt, Repeat, Search } from 'lucide-react'
+import { Plus, Receipt, Repeat, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,12 +16,34 @@ import { useExpenses } from '@/hooks/use-expenses'
 import { EXPENSE_CATEGORIES } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 
+const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
 export default function GastosPage() {
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth() + 1)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
-  const { expenses, loading, error, remove, refetch } = useExpenses(
-    categoryFilter !== 'all' ? { category: categoryFilter } : undefined
-  )
+
+  const from = `${year}-${String(month).padStart(2, '0')}-01`
+  const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`
+  const { expenses, loading, error, remove, refetch } = useExpenses({
+    ...(categoryFilter !== 'all' ? { category: categoryFilter } : {}),
+    from,
+    to,
+  })
+
+  const atCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
+  const prevMonth = () => {
+    if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1)
+  }
+  const nextMonth = () => {
+    if (atCurrentMonth) return
+    if (month === 12) { setYear((y) => y + 1); setMonth(1) } else setMonth((m) => m + 1)
+  }
 
   const visibleExpenses = search.trim()
     ? expenses.filter((e) => e.description.toLowerCase().includes(search.trim().toLowerCase()))
@@ -61,6 +83,17 @@ export default function GastosPage() {
         }
       />
 
+      {/* Month selector */}
+      <div className="flex items-center justify-between bg-card rounded-xl border border-border p-3">
+        <Button variant="ghost" size="icon" onClick={prevMonth}>
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <span className="font-semibold">{MONTH_NAMES[month - 1]} {year}</span>
+        <Button variant="ghost" size="icon" onClick={nextMonth} disabled={atCurrentMonth}>
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+      </div>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -94,7 +127,7 @@ export default function GastosPage() {
         <EmptyState
           icon={Receipt}
           title="Sin gastos"
-          description={search ? 'No se encontraron gastos con esa búsqueda' : 'Registra tus gastos para llevar un control de tus finanzas'}
+          description={search ? 'No se encontraron gastos con esa búsqueda' : `Sin gastos en ${MONTH_NAMES[month - 1]}. Registra tus gastos para llevar el control.`}
           action={
             !search ? (
               <Button asChild>
