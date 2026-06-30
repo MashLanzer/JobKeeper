@@ -43,17 +43,20 @@ interface MonthlyIncome {
 
 const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
-function IncomeTrendChart({ data }: { data: MonthlyIncome[] }) {
+function IncomeTrendChart({ data, selected, onSelect }: { data: MonthlyIncome[]; selected?: { year: number; month: number }; onSelect?: (year: number, month: number) => void }) {
   const max = Math.max(...data.map(d => d.income), 1)
-  const now = new Date()
 
   return (
     <div className="flex items-end gap-1.5 h-28 pt-2">
       {data.map(({ year, month, income }) => {
-        const isCurrent = year === now.getFullYear() && month === now.getMonth() + 1
+        const isCurrent = selected ? year === selected.year && month === selected.month : false
         const pct = (income / max) * 100
         return (
-          <div key={`${year}-${month}`} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+          <button
+            key={`${year}-${month}`}
+            onClick={() => onSelect?.(year, month)}
+            className="flex-1 flex flex-col items-center gap-1 min-w-0 group"
+          >
             {income > 0 && (
               <span className="text-[8px] text-muted-foreground leading-none">
                 {income >= 1000 ? `${Math.round(income / 1000)}k` : String(Math.round(income))}
@@ -61,14 +64,14 @@ function IncomeTrendChart({ data }: { data: MonthlyIncome[] }) {
             )}
             <div className="w-full flex-1 flex items-end">
               <div
-                className={`w-full rounded-t-sm transition-all duration-500 ${isCurrent ? 'bg-primary' : 'bg-primary/40'}`}
+                className={`w-full rounded-t-sm transition-all duration-500 group-hover:bg-primary/70 ${isCurrent ? 'bg-primary' : 'bg-primary/40'}`}
                 style={{ height: pct > 0 ? `${Math.max(pct, 4)}%` : '2px', opacity: pct > 0 ? 1 : 0.2 }}
               />
             </div>
             <span className={`text-[9px] leading-none ${isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
               {MONTH_SHORT[month - 1]}
             </span>
-          </div>
+          </button>
         )
       })}
     </div>
@@ -127,6 +130,7 @@ export default function FinanzasPage() {
 
   const incomeChange = summary && prevSummary ? pctChange(summary.totalIncome, prevSummary.totalIncome) : null
   const expenseChange = summary && prevSummary ? pctChange(summary.totalExpenses, prevSummary.totalExpenses) : null
+  const netChange = summary && prevSummary && prevSummary.netProfit > 0 ? pctChange(summary.netProfit, prevSummary.netProfit) : null
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -214,9 +218,16 @@ export default function FinanzasPage() {
                     </div>
                     <p className="text-sm font-medium">Ganancia neta</p>
                   </div>
-                  <p className={`text-2xl font-bold ${(summary?.netProfit || 0) >= 0 ? 'text-money' : 'text-destructive'}`}>
-                    {formatCurrency(summary?.netProfit || 0)}
-                  </p>
+                  <div className="text-right">
+                    <p className={`text-2xl font-bold ${(summary?.netProfit || 0) >= 0 ? 'text-money' : 'text-destructive'}`}>
+                      {formatCurrency(summary?.netProfit || 0)}
+                    </p>
+                    {netChange !== null && (
+                      <p className={`text-[11px] ${netChange >= 0 ? 'text-money' : 'text-pending'}`}>
+                        {netChange >= 0 ? '↑' : '↓'} {Math.abs(netChange)}% vs mes pasado
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Income vs Expense visual bar */}
@@ -251,8 +262,12 @@ export default function FinanzasPage() {
           {incomeTrend.length > 0 && (
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-semibold text-muted-foreground mb-3">Ingresos — últimos 6 meses</p>
-                <IncomeTrendChart data={incomeTrend} />
+                <p className="text-xs font-semibold text-muted-foreground mb-3">Ingresos — últimos 6 meses (toca para ver)</p>
+                <IncomeTrendChart
+                  data={incomeTrend}
+                  selected={{ year, month }}
+                  onSelect={(y, m) => { setYear(y); setMonth(m) }}
+                />
               </CardContent>
             </Card>
           )}
