@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   DollarSign,
@@ -13,6 +14,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { getPendingBalance } from '@/services/jobs'
+import { getMaterials } from '@/services/materials'
+import { formatCurrency } from '@/lib/utils'
 
 interface Tool {
   href: string
@@ -34,23 +38,50 @@ const tools: Tool[] = [
 ]
 
 export default function MasPage() {
+  const [pending, setPending] = useState(0)
+  const [lowCount, setLowCount] = useState(0)
+
+  useEffect(() => {
+    getPendingBalance().then(setPending).catch(() => {})
+    getMaterials()
+      .then((ms) =>
+        setLowCount(ms.filter((m) => Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0).length)
+      )
+      .catch(() => {})
+  }, [])
+
+  // Aviso accionable por acceso (solo donde hay algo que atender).
+  const badgeFor = (href: string): string | null => {
+    if (href === '/cobranza' && pending > 0) return formatCurrency(pending)
+    if (href === '/materiales' && lowCount > 0) return `${lowCount} bajo${lowCount !== 1 ? 's' : ''}`
+    return null
+  }
+
   return (
     <div className="space-y-6 page-transition">
       <h1 className="text-2xl font-bold text-foreground">Más</h1>
 
       <div className="grid grid-cols-3 gap-3">
-        {tools.map(({ href, label, icon: Icon, color, bg }) => (
-          <Link key={href} href={href} className="block">
-            <Card className="hover:border-primary/50 transition-colors active:scale-[0.97]">
-              <div className="flex flex-col items-center justify-center gap-2 py-5 px-1">
-                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${bg}`}>
-                  <Icon className={`h-6 w-6 ${color}`} />
+        {tools.map(({ href, label, icon: Icon, color, bg }) => {
+          const badge = badgeFor(href)
+          return (
+            <Link key={href} href={href} className="block">
+              <Card className="relative hover:border-primary/50 transition-colors active:scale-[0.97]">
+                {badge && (
+                  <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold leading-none px-1.5 py-1 rounded-full bg-amber-500 text-white max-w-[80%] truncate">
+                    {badge}
+                  </span>
+                )}
+                <div className="flex flex-col items-center justify-center gap-2 py-5 px-1">
+                  <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${bg}`}>
+                    <Icon className={`h-6 w-6 ${color}`} />
+                  </div>
+                  <span className="text-xs font-medium text-center leading-tight">{label}</span>
                 </div>
-                <span className="text-xs font-medium text-center leading-tight">{label}</span>
-              </div>
-            </Card>
-          </Link>
-        ))}
+              </Card>
+            </Link>
+          )
+        })}
       </div>
     </div>
   )
