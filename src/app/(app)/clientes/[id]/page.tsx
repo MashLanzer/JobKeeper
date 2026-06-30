@@ -202,6 +202,21 @@ export default function ClienteDetailPage() {
     }
   }
 
+  // Agenda un mantenimiento prellenado para este cliente.
+  const scheduleMaintenance = () => {
+    if (!client) return
+    sessionStorage.setItem(
+      'prefill_job',
+      JSON.stringify({
+        title: 'Mantenimiento A/C',
+        category: 'A/C - Mantenimiento',
+        client_id: id,
+        address: client.address || '',
+      })
+    )
+    router.push('/trabajos/nuevo')
+  }
+
   const handleEdit = async (data: any) => {
     try {
       setEditLoading(true)
@@ -358,6 +373,11 @@ export default function ClienteDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <Button onClick={scheduleMaintenance} size="sm" variant="outline" className="w-full">
+            <Wrench className="h-4 w-4 mr-2" />
+            Agendar mantenimiento
+          </Button>
+
           {client && hasMaintenance(client) && (() => {
             const months = client.maintenance_months as number
             const last = client.last_service_date as string
@@ -425,6 +445,8 @@ export default function ClienteDetailPage() {
         const totalBilled = activeJobs.reduce((s, j) => s + Number(j.price), 0)
         const totalCollected = activeJobs.reduce((s, j) => s + Number(j.deposit), 0) + paymentsTotal
         const balance = totalBilled - totalCollected
+        const completedCount = activeJobs.filter((j) => j.status === 'completado').length
+        const avgTicket = activeJobs.length > 0 ? totalBilled / activeJobs.length : 0
         return (
           <Card>
             <CardHeader className="pb-2">
@@ -432,7 +454,16 @@ export default function ClienteDetailPage() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total facturado</span>
+                <span className="text-muted-foreground">Servicios</span>
+                <span className="font-medium">{activeJobs.length} ({completedCount} completados)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Ticket promedio</span>
+                <span className="font-medium">{formatCurrency(avgTicket)}</span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total facturado (de por vida)</span>
                 <span className="font-semibold">{formatCurrency(totalBilled)}</span>
               </div>
               <div className="flex justify-between">
