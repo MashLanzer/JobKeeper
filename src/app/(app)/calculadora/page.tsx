@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calculator, AirVent, ArrowRightLeft, Thermometer, Plus } from 'lucide-react'
+import { Calculator, AirVent, ArrowRightLeft, Thermometer, Plus, DollarSign } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 
 const BTU_PER_FT2 = 25 // estimación para clima cálido (residencial)
 
@@ -31,6 +31,11 @@ export default function CalculadoraPage() {
   // Conversor de temperatura
   const [tempVal, setTempVal] = useState('')
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('F')
+
+  // Estimador de costo de instalación
+  const [equipCost, setEquipCost] = useState('')
+  const [laborCost, setLaborCost] = useState('')
+  const [margin, setMargin] = useState('30')
 
   const areaNum = Number(area) || 0
   const areaFt2 = unit === 'ft2' ? areaNum : areaNum * 10.7639
@@ -55,6 +60,25 @@ export default function CalculadoraPage() {
   const tv = Number(tempVal)
   const tempConverted =
     tempVal === '' || isNaN(tv) ? null : tempUnit === 'F' ? ((tv - 32) * 5) / 9 : (tv * 9) / 5 + 32
+
+  // Estimador de costo: (equipo + mano de obra) con margen → precio a cotizar.
+  const baseCost = (Number(equipCost) || 0) + (Number(laborCost) || 0)
+  const marginNum = Number(margin) || 0
+  const quoteTotal = Math.round(baseCost * (1 + marginNum / 100))
+  const quoteProfit = quoteTotal - baseCost
+
+  const createQuoteFromEstimate = () => {
+    sessionStorage.setItem(
+      'prefill_job',
+      JSON.stringify({
+        title: 'Instalación A/C',
+        category: 'A/C - Instalación',
+        price: quoteTotal,
+        description: `Estimado: equipo/materiales ${formatCurrency(Number(equipCost) || 0)} + mano de obra ${formatCurrency(Number(laborCost) || 0)}, margen ${marginNum}%.`,
+      })
+    )
+    router.push('/trabajos/nuevo')
+  }
 
   const createInstallJob = () => {
     sessionStorage.setItem(
@@ -163,6 +187,52 @@ export default function CalculadoraPage() {
               <Button size="sm" variant="outline" className="w-full mt-2" onClick={createInstallJob}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 Crear trabajo de instalación
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Estimador de costo de instalación */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" />
+            Estimador de costo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Equipo / materiales</Label>
+              <Input type="number" min="0" placeholder="0.00" value={equipCost} onChange={(e) => setEquipCost(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Mano de obra</Label>
+              <Input type="number" min="0" placeholder="0.00" value={laborCost} onChange={(e) => setLaborCost(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Margen (%)</Label>
+            <Input type="number" min="0" placeholder="30" value={margin} onChange={(e) => setMargin(e.target.value)} />
+          </div>
+          {baseCost > 0 && (
+            <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Costo base</span>
+                <span className="font-medium">{formatCurrency(baseCost)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Ganancia ({marginNum}%)</span>
+                <span className="font-medium text-money">{formatCurrency(quoteProfit)}</span>
+              </div>
+              <div className="flex justify-between text-base font-semibold border-t border-border pt-1 mt-1">
+                <span>Precio a cotizar</span>
+                <span className="text-money">{formatCurrency(quoteTotal)}</span>
+              </div>
+              <Button size="sm" variant="outline" className="w-full mt-2" onClick={createQuoteFromEstimate}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Crear cotización con este precio
               </Button>
             </div>
           )}
