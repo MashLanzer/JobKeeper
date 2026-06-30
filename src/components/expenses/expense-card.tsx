@@ -1,10 +1,12 @@
 'use client'
 
-import { Trash2, Tag, Calendar } from 'lucide-react'
+import { Trash2, Tag, Calendar, Image as ImageIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { getReceiptUrl } from '@/services/expense-receipts'
+import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Expense } from '@/types'
 
@@ -14,6 +16,12 @@ interface ExpenseCardProps {
 }
 
 export function ExpenseCard({ expense, onDelete }: ExpenseCardProps) {
+  const openReceipt = async () => {
+    if (!expense.receipt_path) return
+    const url = await getReceiptUrl(expense.receipt_path)
+    if (url) window.open(url, '_blank')
+    else toast.error('No se pudo abrir el recibo')
+  }
   return (
     <Card>
       <CardContent className="p-4">
@@ -42,6 +50,13 @@ export function ExpenseCard({ expense, onDelete }: ExpenseCardProps) {
 
             {expense.notes && (
               <p className="text-xs text-muted-foreground mt-1">{expense.notes}</p>
+            )}
+
+            {expense.receipt_path && (
+              <button onClick={openReceipt} className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary">
+                <ImageIcon className="h-3.5 w-3.5" />
+                Ver recibo
+              </button>
             )}
           </div>
 

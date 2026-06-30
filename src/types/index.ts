@@ -96,6 +96,8 @@ export interface Expense {
   category: string
   date: string
   notes?: string
+  miles?: number | null
+  receipt_path?: string | null
   created_at: string
   updated_at: string
 }
