@@ -80,6 +80,7 @@ export default function FinanzasPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [summary, setSummary] = useState<FinanceSummary | null>(null)
+  const [prevSummary, setPrevSummary] = useState<FinanceSummary | null>(null)
   const [recentJobs, setRecentJobs] = useState<any[]>([])
   const [incomeTrend, setIncomeTrend] = useState<MonthlyIncome[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,11 +93,14 @@ export default function FinanzasPage() {
     const load = async () => {
       try {
         setLoading(true)
-        const [fin, jobs] = await Promise.all([
+        const prevDate = new Date(year, month - 2, 1) // mes anterior
+        const [fin, jobs, prevFin] = await Promise.all([
           getFinanceSummary(year, month),
           getPaidJobsByMonth(year, month),
+          getFinanceSummary(prevDate.getFullYear(), prevDate.getMonth() + 1),
         ])
         setSummary(fin)
+        setPrevSummary(prevFin)
         // Lo cobrado del mes: coincide con el total de "Ingresos".
         setRecentJobs(jobs)
       } catch (err) {
@@ -107,6 +111,22 @@ export default function FinanzasPage() {
     }
     load()
   }, [year, month])
+
+  // Cambio porcentual vs mes anterior (null si no hay base de comparación).
+  const pctChange = (cur: number, prev: number): number | null =>
+    prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null
+
+  // Ingresos por categoría (sobre lo cobrado del mes).
+  const incomeByCategory = recentJobs.reduce((acc: Record<string, number>, j: any) => {
+    const cat = j.category || 'General/Varios'
+    acc[cat] = (acc[cat] || 0) + Number(j.price)
+    return acc
+  }, {})
+  const incomeCatEntries = Object.entries(incomeByCategory).sort(([, a], [, b]) => (b as number) - (a as number))
+  const maxIncomeCat = Math.max(...(incomeCatEntries.map(([, v]) => v as number)), 1)
+
+  const incomeChange = summary && prevSummary ? pctChange(summary.totalIncome, prevSummary.totalIncome) : null
+  const expenseChange = summary && prevSummary ? pctChange(summary.totalExpenses, prevSummary.totalExpenses) : null
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -158,6 +178,11 @@ export default function FinanzasPage() {
                 <p className="text-xl font-bold text-money">
                   {formatCurrency(summary?.totalIncome || 0)}
                 </p>
+                {incomeChange !== null && (
+                  <p className={`text-[11px] mt-0.5 ${incomeChange >= 0 ? 'text-money' : 'text-pending'}`}>
+                    {incomeChange >= 0 ? '↑' : '↓'} {Math.abs(incomeChange)}% vs mes pasado
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -172,6 +197,11 @@ export default function FinanzasPage() {
                 <p className="text-xl font-bold text-destructive">
                   -{formatCurrency(summary?.totalExpenses || 0)}
                 </p>
+                {expenseChange !== null && (
+                  <p className={`text-[11px] mt-0.5 ${expenseChange <= 0 ? 'text-money' : 'text-pending'}`}>
+                    {expenseChange >= 0 ? '↑' : '↓'} {Math.abs(expenseChange)}% vs mes pasado
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -233,7 +263,30 @@ export default function FinanzasPage() {
               <TabsTrigger value="gastos" className="flex-1">Gastos</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ingresos" className="mt-4">
+            <TabsContent value="ingresos" className="mt-4 space-y-3">
+              {incomeCatEntries.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Por categoría</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {incomeCatEntries.map(([cat, amount]) => (
+                      <div key={cat}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">{cat}</span>
+                          <span className="font-medium text-money">{formatCurrency(amount as number)}</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-green-500/60 rounded-full transition-all duration-500"
+                            style={{ width: `${((amount as number) / maxIncomeCat) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
               {recentJobs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   Sin cobros este mes
