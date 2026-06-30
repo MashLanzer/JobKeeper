@@ -18,6 +18,7 @@ import { getPayments, addPayment } from '@/services/payments'
 import { scheduleJobReminder } from '@/lib/local-notifications'
 import { haptic } from '@/lib/haptics'
 import { buildIcs, downloadIcs } from '@/lib/ics'
+import { getBlockedDays, toggleBlockedDay } from '@/lib/blocked-days'
 import Link from 'next/link'
 import type { Job } from '@/types'
 
@@ -111,6 +112,11 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
   const [agendaJobs, setAgendaJobs] = useState<Job[]>([])
   const [agendaLoading, setAgendaLoading] = useState(false)
   const [agendaRefresh, setAgendaRefresh] = useState(0)
+  const [blocked, setBlocked] = useState<string[]>([])
+
+  useEffect(() => { setBlocked(getBlockedDays()) }, [])
+  const dayIsBlocked = (day: number) => blocked.includes(dateKey(new Date(year, month - 1, day)))
+  const toggleBlocked = (day: number) => setBlocked(toggleBlockedDay(dateKey(new Date(year, month - 1, day))))
 
   useEffect(() => { try { localStorage.setItem('cal_view', view) } catch { /* ignore */ } }, [view])
   useEffect(() => { try { localStorage.setItem('cal_color', colorBy) } catch { /* ignore */ } }, [colorBy])
@@ -671,6 +677,7 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
             const isSelected = selectedDay === day
             const hasJobs = dayJobs.length > 0
             const hasOverdue = dayJobs.some(isOverdue)
+            const blockedDay = dayIsBlocked(day)
 
             return (
               <button
@@ -684,6 +691,7 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
                   !isSelected && dayJobs.length === 1 && 'bg-primary/5',
                   isToday && 'border-2 border-primary',
                   isSelected && 'bg-primary/20',
+                  blockedDay && !isSelected && 'bg-muted/70',
                   !hasJobs && !isSelected && 'text-muted-foreground'
                 )}
               >
@@ -716,6 +724,9 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
                 )}
                 {maintByDay[day] && (
                   <Wrench className="absolute bottom-0.5 left-0.5 h-2.5 w-2.5 text-amber-500" />
+                )}
+                {blockedDay && (
+                  <span className="absolute bottom-0.5 right-0.5 text-[7px] font-bold text-muted-foreground uppercase">Libre</span>
                 )}
               </button>
             )
@@ -762,6 +773,13 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
               </Button>
             )}
           </div>
+
+          <button
+            onClick={() => toggleBlocked(selectedDay)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            {dayIsBlocked(selectedDay) ? '✓ Día libre — quitar' : 'Marcar como día libre'}
+          </button>
 
           {selectedDayMaint.length > 0 && (
             <div className="flex flex-col gap-2">
