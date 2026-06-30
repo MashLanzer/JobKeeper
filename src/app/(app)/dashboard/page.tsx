@@ -202,6 +202,85 @@ export default function DashboardPage() {
         </Button>
       </div>
 
+      {/* Today's agenda — lo más relevante del día, arriba del todo */}
+      {todayJobs.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary" />
+              Hoy ({todayJobs.length})
+            </h2>
+            {todayJobs.some((j) => j.address) && (
+              <Button variant="ghost" size="sm" className="h-8" onClick={openTodayRoute}>
+                <Navigation className="h-3.5 w-3.5 mr-1" />
+                Ruta
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-col gap-4">
+            {todayJobs.map((job) => (
+              <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
+                <Card className="hover:border-primary/50 transition-colors">
+                  <CardContent className="p-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium truncate">{job.title}</h3>
+                        <JobStatusBadge status={job.status} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {job.scheduled_at &&
+                          new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        {job.client ? ` · ${job.client.name}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-money flex-shrink-0">
+                      {formatCurrency(job.price)}
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tomorrow reminder */}
+      {tomorrowJobs.length > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm font-semibold flex items-center gap-2 mb-1.5">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            Mañana tienes {tomorrowJobs.length} trabajo{tomorrowJobs.length !== 1 ? 's' : ''}
+          </p>
+          <div className="space-y-1">
+            {tomorrowJobs.map((job) => (
+              <Link
+                key={job.id}
+                href={`/trabajos/${job.id}`}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="truncate">
+                  {job.scheduled_at &&
+                    new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  {' · '}
+                  {job.title}
+                </span>
+                {job.client && (
+                  <span className="text-xs text-muted-foreground flex-shrink-0 truncate max-w-[35%]">
+                    {job.client.name}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* This week summary */}
       {weekStats && (weekStats.count > 0 || weekStats.income > 0) && (
         <div className="rounded-xl border border-border bg-card p-4">
@@ -310,85 +389,6 @@ export default function DashboardPage() {
                   </Button>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Today's agenda */}
-      {todayJobs.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              Hoy ({todayJobs.length})
-            </h2>
-            {todayJobs.some((j) => j.address) && (
-              <Button variant="ghost" size="sm" className="h-8" onClick={openTodayRoute}>
-                <Navigation className="h-3.5 w-3.5 mr-1" />
-                Ruta
-              </Button>
-            )}
-          </div>
-          <div className="flex flex-col gap-4">
-            {todayJobs.map((job) => (
-              <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
-                <Card className="hover:border-primary/50 transition-colors">
-                  <CardContent className="p-3 flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-medium truncate">{job.title}</h3>
-                        <JobStatusBadge status={job.status} />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {job.scheduled_at &&
-                          new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        {job.client ? ` · ${job.client.name}` : ''}
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold text-money flex-shrink-0">
-                      {formatCurrency(job.price)}
-                    </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tomorrow reminder */}
-      {tomorrowJobs.length > 0 && (
-        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
-          <p className="text-sm font-semibold flex items-center gap-2 mb-1.5">
-            <CalendarDays className="h-4 w-4 text-primary" />
-            Mañana tienes {tomorrowJobs.length} trabajo{tomorrowJobs.length !== 1 ? 's' : ''}
-          </p>
-          <div className="space-y-1">
-            {tomorrowJobs.map((job) => (
-              <Link
-                key={job.id}
-                href={`/trabajos/${job.id}`}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="truncate">
-                  {job.scheduled_at &&
-                    new Date(job.scheduled_at).toLocaleTimeString('es-ES', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  {' · '}
-                  {job.title}
-                </span>
-                {job.client && (
-                  <span className="text-xs text-muted-foreground flex-shrink-0 truncate max-w-[35%]">
-                    {job.client.name}
-                  </span>
-                )}
-              </Link>
             ))}
           </div>
         </div>
