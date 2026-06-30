@@ -21,6 +21,7 @@ import { getMaterials } from '@/services/materials'
 import { getTemplates } from '@/services/templates'
 import { getPin, setPin, clearPin } from '@/lib/pin'
 import { getCurrency, setCurrency, CURRENCIES } from '@/lib/currency'
+import { getAccent, setAccent, ACCENTS } from '@/lib/accent'
 import { getPdfPrefs, setPdfPrefs, type PdfPrefs } from '@/lib/pdf-prefs'
 import { ensurePermission, syncAllReminders, sendTestReminder } from '@/lib/local-notifications'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -143,6 +144,7 @@ export default function ConfiguracionPage() {
   const [pdfPrefs, setPdfPrefsState] = useState<PdfPrefs>({ photos: true, checklist: true, signature: true })
   const [remindersOn, setRemindersOn] = useState(true)
   const [reminderLead, setReminderLead] = useState('1d')
+  const [accent, setAccentState] = useState('indigo')
 
   useEffect(() => {
     setHasPin(!!getPin())
@@ -150,6 +152,7 @@ export default function ConfiguracionPage() {
     setPdfPrefsState(getPdfPrefs())
     setRemindersOn(localStorage.getItem('reminders_enabled') !== '0')
     setReminderLead(localStorage.getItem('reminder_lead') || '1d')
+    setAccentState(getAccent())
   }, [])
 
   const handleToggleReminders = async (v: boolean) => {
@@ -464,6 +467,23 @@ export default function ConfiguracionPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Color de acento</p>
+            <div className="flex flex-wrap gap-2.5">
+              {ACCENTS.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => { setAccent(a.id); setAccentState(a.id) }}
+                  aria-label={a.label}
+                  className={`h-9 w-9 rounded-full transition-transform ${accent === a.id ? 'ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110' : ''}`}
+                  style={{ backgroundColor: `hsl(${a.hsl})` }}
+                />
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>

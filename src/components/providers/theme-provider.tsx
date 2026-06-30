@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { applyAccent } from '@/lib/accent'
 
 type Theme = 'dark' | 'light'
 
@@ -25,6 +26,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else {
       document.documentElement.classList.add('dark')
     }
+    applyAccent() // aplica el color de acento guardado
   }, [])
 
   // Sincroniza la barra de estado nativa con el tema (solo en la app).
