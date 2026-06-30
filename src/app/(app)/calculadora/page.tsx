@@ -46,6 +46,10 @@ export default function CalculadoraPage() {
   const [convType, setConvType] = useState<'long' | 'peso' | 'presion'>('long')
   const [convVal, setConvVal] = useState('')
 
+  // Superheat / Subcooling
+  const [shVal, setShVal] = useState('')
+  const [scVal, setScVal] = useState('')
+
   const areaNum = Number(area) || 0
   const areaFt2 = unit === 'ft2' ? areaNum : areaNum * 10.7639
   let btu = areaFt2 * BTU_PER_FT2
@@ -75,6 +79,18 @@ export default function CalculadoraPage() {
   const marginNum = Number(margin) || 0
   const quoteTotal = Math.round(baseCost * (1 + marginNum / 100))
   const quoteProfit = quoteTotal - baseCost
+
+  // Superheat / Subcooling: rango típico 8–12 °F (verifica nameplate).
+  const evalRange = (v: string): { label: string; cls: string } | null => {
+    if (v === '') return null
+    const n = Number(v)
+    if (isNaN(n)) return null
+    if (n < 8) return { label: 'Bajo (posible sobrecarga / falta de flujo)', cls: 'text-pending' }
+    if (n > 12) return { label: 'Alto (posible baja carga / restricción)', cls: 'text-pending' }
+    return { label: 'En rango (8–12 °F) ✓', cls: 'text-money' }
+  }
+  const shStatus = evalRange(shVal)
+  const scStatus = evalRange(scVal)
 
   // Gas adicional por longitud de línea (más allá de la carga de fábrica).
   const extraLen = Math.max(0, (Number(lineLen) || 0) - (Number(precharge) || 0))
@@ -376,6 +392,45 @@ export default function CalculadoraPage() {
               </span>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Superheat / Subcooling */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Thermometer className="h-4 w-4 text-primary" />
+            Superheat / Subcooling
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Superheat (°F)</Label>
+              <Input type="number" placeholder="Ej: 10" value={shVal} onChange={(e) => setShVal(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Subcooling (°F)</Label>
+              <Input type="number" placeholder="Ej: 10" value={scVal} onChange={(e) => setScVal(e.target.value)} />
+            </div>
+          </div>
+          {(shStatus || scStatus) && (
+            <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-sm">
+              {shStatus && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Superheat</span>
+                  <span className={cn('font-medium text-right', shStatus.cls)}>{shStatus.label}</span>
+                </div>
+              )}
+              {scStatus && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Subcooling</span>
+                  <span className={cn('font-medium text-right', scStatus.cls)}>{scStatus.label}</span>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">Rango típico 8–12 °F. Usa siempre el objetivo del fabricante (nameplate).</p>
         </CardContent>
       </Card>
 
