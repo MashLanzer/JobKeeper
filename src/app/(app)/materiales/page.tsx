@@ -23,7 +23,7 @@ import { addMovement, getMovements, type MaterialMovement } from '@/services/mat
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Material } from '@/types'
 
-const EMPTY: MaterialInput = { name: '', unit: '', price: 0, stock: 0, min_stock: 0, notes: '' }
+const EMPTY: MaterialInput = { name: '', unit: '', price: 0, stock: 0, min_stock: 0, supplier: '', notes: '' }
 
 export default function MaterialesPage() {
   const [materials, setMaterials] = useState<Material[]>([])
@@ -68,6 +68,7 @@ export default function MaterialesPage() {
       price: Number(m.price),
       stock: Number(m.stock),
       min_stock: Number(m.min_stock),
+      supplier: m.supplier || '',
       notes: m.notes || '',
     })
     setOpen(true)
@@ -135,7 +136,7 @@ export default function MaterialesPage() {
     if (low.length === 0) return
     const lines = low.map((m) => {
       const need = Math.max(0, Number(m.min_stock) - Number(m.stock))
-      return `• ${m.name} — tengo ${Number(m.stock)}${m.unit ? ` ${m.unit}` : ''}, mín ${Number(m.min_stock)}${need > 0 ? ` (faltan ${need})` : ''}`
+      return `• ${m.name} — tengo ${Number(m.stock)}${m.unit ? ` ${m.unit}` : ''}, mín ${Number(m.min_stock)}${need > 0 ? ` (faltan ${need})` : ''}${m.supplier ? ` · ${m.supplier}` : ''}`
     })
     const text = `Lista de compra:\n${lines.join('\n')}`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
@@ -352,6 +353,14 @@ export default function MaterialesPage() {
                   onChange={(e) => setForm((f) => ({ ...f, min_stock: Number(e.target.value) }))}
                 />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Proveedor</Label>
+              <Input
+                placeholder="Ej: Distribuidora Polar"
+                value={form.supplier || ''}
+                onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
+              />
             </div>
             <Button onClick={handleSave} className="w-full" disabled={saving}>
               {saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Agregar material'}

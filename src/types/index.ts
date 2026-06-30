@@ -110,6 +110,7 @@ export interface Material {
   price: number
   stock: number
   min_stock: number
+  supplier?: string | null
   notes?: string | null
   created_at: string
   updated_at: string
