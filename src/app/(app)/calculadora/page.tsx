@@ -37,6 +37,15 @@ export default function CalculadoraPage() {
   const [laborCost, setLaborCost] = useState('')
   const [margin, setMargin] = useState('30')
 
+  // Carga de gas por longitud de línea
+  const [lineLen, setLineLen] = useState('')
+  const [precharge, setPrecharge] = useState('15')
+  const [ozPerFt, setOzPerFt] = useState('0.6')
+
+  // Conversiones varias
+  const [convType, setConvType] = useState<'long' | 'peso' | 'presion'>('long')
+  const [convVal, setConvVal] = useState('')
+
   const areaNum = Number(area) || 0
   const areaFt2 = unit === 'ft2' ? areaNum : areaNum * 10.7639
   let btu = areaFt2 * BTU_PER_FT2
@@ -66,6 +75,21 @@ export default function CalculadoraPage() {
   const marginNum = Number(margin) || 0
   const quoteTotal = Math.round(baseCost * (1 + marginNum / 100))
   const quoteProfit = quoteTotal - baseCost
+
+  // Gas adicional por longitud de línea (más allá de la carga de fábrica).
+  const extraLen = Math.max(0, (Number(lineLen) || 0) - (Number(precharge) || 0))
+  const extraGasOz = extraLen * (Number(ozPerFt) || 0)
+
+  // Conversiones (ambos sentidos).
+  const cv = Number(convVal)
+  const convResult =
+    convVal === '' || isNaN(cv)
+      ? null
+      : convType === 'long'
+        ? { a: `${(cv * 0.3048).toFixed(2)} m`, b: `${(cv / 0.3048).toFixed(2)} ft` }
+        : convType === 'peso'
+          ? { a: `${(cv * 0.4536).toFixed(2)} kg`, b: `${(cv / 0.4536).toFixed(2)} lb` }
+          : { a: `${(cv * 0.0689).toFixed(2)} bar`, b: `${(cv / 0.0689).toFixed(1)} psi` }
 
   const createQuoteFromEstimate = () => {
     sessionStorage.setItem(
@@ -350,6 +374,83 @@ export default function CalculadoraPage() {
               <span className="font-semibold">
                 {tempConverted.toFixed(1)} °{tempUnit === 'F' ? 'C' : 'F'}
               </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Carga de gas por longitud de línea */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <AirVent className="h-4 w-4 text-primary" />
+            Gas extra por longitud de línea
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Línea (ft)</Label>
+              <Input type="number" min="0" placeholder="Ej: 35" value={lineLen} onChange={(e) => setLineLen(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">De fábrica (ft)</Label>
+              <Input type="number" min="0" value={precharge} onChange={(e) => setPrecharge(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">oz / ft</Label>
+              <Input type="number" min="0" step="0.1" value={ozPerFt} onChange={(e) => setOzPerFt(e.target.value)} />
+            </div>
+          </div>
+          {Number(lineLen) > 0 && (
+            <div className="rounded-lg bg-muted/50 p-3 flex justify-between text-sm">
+              <span className="text-muted-foreground">Refrigerante adicional</span>
+              <span className="font-semibold">{extraGasOz.toFixed(1)} oz ({extraLen} ft extra)</span>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">Ajusta oz/ft según el fabricante (típico 0.5–0.65 oz/ft).</p>
+        </CardContent>
+      </Card>
+
+      {/* Conversiones varias */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ArrowRightLeft className="h-4 w-4 text-primary" />
+            Conversiones
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex bg-muted rounded-lg p-1">
+            {([['long', 'Longitud'], ['peso', 'Peso'], ['presion', 'Presión']] as const).map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => setConvType(v)}
+                className={cn(
+                  'flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  convType === v ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <Input
+            type="number"
+            placeholder={convType === 'long' ? 'pies / metros' : convType === 'peso' ? 'libras / kg' : 'psi / bar'}
+            value={convVal}
+            onChange={(e) => setConvVal(e.target.value)}
+          />
+          {convResult && (
+            <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{convType === 'long' ? 'ft → m' : convType === 'peso' ? 'lb → kg' : 'psi → bar'}</span>
+                <span className="font-semibold">{convResult.a}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{convType === 'long' ? 'm → ft' : convType === 'peso' ? 'kg → lb' : 'bar → psi'}</span>
+                <span className="font-semibold">{convResult.b}</span>
+              </div>
             </div>
           )}
         </CardContent>
