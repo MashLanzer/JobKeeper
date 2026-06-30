@@ -1,20 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Receipt, Repeat, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Receipt, Repeat, Search, ChevronLeft, ChevronRight, Wallet, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import { ExpenseCard } from '@/components/expenses/expense-card'
 import { useExpenses } from '@/hooks/use-expenses'
+import { getExpenses } from '@/services/expenses'
+import { getBudgets, setBudget } from '@/lib/budgets'
 import { EXPENSE_CATEGORIES } from '@/types'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -50,6 +54,35 @@ export default function GastosPage() {
     : expenses
 
   const totalAmount = visibleExpenses.reduce((sum, e) => sum + e.amount, 0)
+
+  // Presupuestos por categoría: gasto del mes (todas las categorías) vs límite.
+  const [budgets, setBudgets] = useState<Record<string, number>>({})
+  const [spentByCat, setSpentByCat] = useState<Record<string, number>>({})
+  const [budgetOpen, setBudgetOpen] = useState(false)
+
+  useEffect(() => { setBudgets(getBudgets()) }, [])
+  useEffect(() => {
+    getExpenses({ from, to })
+      .then((all) => {
+        const map: Record<string, number> = {}
+        for (const e of all) map[e.category] = (map[e.category] || 0) + Number(e.amount)
+        setSpentByCat(map)
+      })
+      .catch(() => setSpentByCat({}))
+  }, [from, to, loading])
+
+  const overBudget = Object.keys(budgets).filter((c) => budgets[c] > 0 && (spentByCat[c] || 0) > budgets[c])
+
+  const handleSetBudget = (cat: string, value: string) => {
+    const amt = Number(value) || 0
+    setBudget(cat, amt)
+    setBudgets((prev) => {
+      const next = { ...prev }
+      if (amt > 0) next[cat] = amt
+      else delete next[cat]
+      return next
+    })
+  }
 
   const handleDelete = async (id: string) => {
     try {
@@ -92,6 +125,66 @@ export default function GastosPage() {
         <Button variant="ghost" size="icon" onClick={nextMonth} disabled={atCurrentMonth}>
           <ChevronRight className="h-5 w-5" />
         </Button>
+      </div>
+
+      {/* Presupuestos por categoría */}
+      <div className="flex items-center justify-between">
+        {overBudget.length > 0 ? (
+          <span className="text-xs text-pending flex items-center gap-1.5">
+            <AlertTriangle className="h-4 w-4" />
+            {overBudget.length} categoría{overBudget.length !== 1 ? 's' : ''} sobre presupuesto
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">Controla tus gastos por categoría</span>
+        )}
+        <Dialog open={budgetOpen} onOpenChange={setBudgetOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8">
+              <Wallet className="h-4 w-4 mr-1.5" />
+              Presupuestos
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Presupuestos de {MONTH_NAMES[month - 1]}</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
+              {EXPENSE_CATEGORIES.map((c) => {
+                const spent = spentByCat[c] || 0
+                const budget = budgets[c] || 0
+                const over = budget > 0 && spent > budget
+                return (
+                  <div key={c} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs capitalize">{c}</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Sin límite"
+                        defaultValue={budget || ''}
+                        onBlur={(e) => handleSetBudget(c, e.target.value)}
+                        className="h-8 w-24 text-right"
+                      />
+                    </div>
+                    {budget > 0 && (
+                      <>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={cn('h-full rounded-full', over ? 'bg-destructive' : 'bg-primary')}
+                            style={{ width: `${Math.min(100, (spent / budget) * 100)}%` }}
+                          />
+                        </div>
+                        <p className={cn('text-[10px]', over ? 'text-pending font-medium' : 'text-muted-foreground')}>
+                          {formatCurrency(spent)} de {formatCurrency(budget)}{over ? ' · excedido' : ''}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative">
