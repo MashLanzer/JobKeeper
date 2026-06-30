@@ -84,13 +84,29 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
   const [reschedJob, setReschedJob] = useState<Job | null>(null)
   const [reschedValue, setReschedValue] = useState('')
   const [reschedSaving, setReschedSaving] = useState(false)
-  const [view, setView] = useState<'mes' | 'semana' | 'agenda'>('mes')
-  const [colorBy, setColorBy] = useState<'estado' | 'categoria'>('estado')
+  // Recuerda la vista y el modo de color preferidos.
+  const [view, setView] = useState<'mes' | 'semana' | 'agenda'>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('cal_view')
+      if (v === 'mes' || v === 'semana' || v === 'agenda') return v
+    }
+    return 'mes'
+  })
+  const [colorBy, setColorBy] = useState<'estado' | 'categoria'>(() => {
+    if (typeof window !== 'undefined') {
+      const c = localStorage.getItem('cal_color')
+      if (c === 'estado' || c === 'categoria') return c
+    }
+    return 'estado'
+  })
   const [filter, setFilter] = useState<CalFilter>('todos')
   const [actionBusy, setActionBusy] = useState<string | null>(null)
   const [agendaJobs, setAgendaJobs] = useState<Job[]>([])
   const [agendaLoading, setAgendaLoading] = useState(false)
   const [agendaRefresh, setAgendaRefresh] = useState(0)
+
+  useEffect(() => { try { localStorage.setItem('cal_view', view) } catch { /* ignore */ } }, [view])
+  useEffect(() => { try { localStorage.setItem('cal_color', colorBy) } catch { /* ignore */ } }, [colorBy])
 
   // Jobs visibles según el filtro rápido (aplica a mes/semana).
   const visibleJobs = useMemo(() => jobs.filter((j) => passesFilter(j, filter)), [jobs, filter])
