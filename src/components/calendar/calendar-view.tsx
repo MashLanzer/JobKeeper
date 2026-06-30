@@ -17,6 +17,7 @@ import { updateJob, getJobs } from '@/services/jobs'
 import { getPayments, addPayment } from '@/services/payments'
 import { scheduleJobReminder } from '@/lib/local-notifications'
 import { haptic } from '@/lib/haptics'
+import { buildIcs, downloadIcs } from '@/lib/ics'
 import Link from 'next/link'
 import type { Job } from '@/types'
 
@@ -227,6 +228,19 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
     } finally {
       setReschedSaving(false)
     }
+  }
+
+  // Exporta los trabajos (con hora) del día seleccionado a un archivo .ics.
+  const exportDayIcs = () => {
+    const withTime = selectedDayJobs.filter((j) => j.scheduled_at)
+    if (withTime.length === 0) {
+      toast.info('No hay trabajos con hora ese día')
+      return
+    }
+    const ics = buildIcs(
+      withTime.map((j) => ({ id: j.id, title: j.title, start: j.scheduled_at as string, location: j.address }))
+    )
+    downloadIcs(`agenda-${selectedDay}.ics`, ics)
   }
 
   // Abre las direcciones de los trabajos del día como ruta en Google Maps.
@@ -663,6 +677,11 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
               <Button variant="outline" size="sm" onClick={openDayRoute} aria-label="Ruta del día">
                 <Navigation className="h-4 w-4 mr-1.5" />
                 Ruta
+              </Button>
+            )}
+            {selectedDayJobs.some((j) => j.scheduled_at) && (
+              <Button variant="outline" size="sm" onClick={exportDayIcs} aria-label="Exportar a calendario">
+                <CalendarCheck className="h-4 w-4" />
               </Button>
             )}
           </div>
