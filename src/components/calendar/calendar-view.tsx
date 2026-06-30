@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Plus, CalendarCheck, CalendarClock, Navigation, Play, CheckCircle2, DollarSign } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CalendarCheck, CalendarClock, Navigation, Play, CheckCircle2, DollarSign, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -257,6 +257,19 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
       withTime.map((j) => ({ id: j.id, title: j.title, start: j.scheduled_at as string, location: j.address }))
     )
     downloadIcs(`agenda-${selectedDay}.ics`, ics)
+  }
+
+  // Comparte la agenda del día (hora · trabajo · cliente · dirección) por WhatsApp.
+  const shareDayAgenda = () => {
+    if (selectedDayJobs.length === 0) return
+    const lines = selectedDayJobs.map((j) => {
+      const t = timeOf(j) ? `${timeOf(j)} · ` : ''
+      const c = j.client?.name ? ` (${j.client.name})` : ''
+      const a = j.address ? ` — ${j.address}` : ''
+      return `• ${t}${j.title}${c}${a}`
+    })
+    const text = `Agenda ${selectedDay} de ${MONTH_NAMES[month - 1]}:\n${lines.join('\n')}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
   }
 
   // Abre las direcciones de los trabajos del día como ruta en Google Maps.
@@ -629,8 +642,12 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
                 onClick={() => setSelectedDay(isSelected ? null : day)}
                 className={cn(
                   'aspect-square flex flex-col items-center justify-start pt-1 rounded-lg transition-colors relative hover:bg-muted',
+                  // Fondo según la carga del día (más trabajos = más intenso)
+                  !isSelected && dayJobs.length >= 3 && 'bg-primary/15',
+                  !isSelected && dayJobs.length === 2 && 'bg-primary/10',
+                  !isSelected && dayJobs.length === 1 && 'bg-primary/5',
                   isToday && 'border-2 border-primary',
-                  isSelected && 'bg-primary/10',
+                  isSelected && 'bg-primary/20',
                   !hasJobs && !isSelected && 'text-muted-foreground'
                 )}
               >
@@ -698,6 +715,11 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
             {selectedDayJobs.some((j) => j.scheduled_at) && (
               <Button variant="outline" size="sm" onClick={exportDayIcs} aria-label="Exportar a calendario">
                 <CalendarCheck className="h-4 w-4" />
+              </Button>
+            )}
+            {selectedDayJobs.length > 0 && (
+              <Button variant="outline" size="sm" onClick={shareDayAgenda} aria-label="Compartir agenda del día">
+                <Share2 className="h-4 w-4" />
               </Button>
             )}
           </div>
