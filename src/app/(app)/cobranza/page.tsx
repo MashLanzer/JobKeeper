@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { MessageCircle, DollarSign, Phone, CheckCircle2 } from 'lucide-react'
+import { MessageCircle, DollarSign, Phone, CheckCircle2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
@@ -89,6 +89,75 @@ export default function CobranzaPage() {
   const callClient = (d: Debtor) => {
     const phone = (d.job.client?.phone || '').replace(/[^\d+]/g, '')
     if (phone) window.open(`tel:${phone}`, '_self')
+  }
+
+  // Estado de cuenta del moroso: junta TODAS las deudas de ese cliente en un PDF.
+  const generateStatement = async (d: Debtor) => {
+    try {
+      const rows = debtors.filter((x) =>
+        d.job.client_id ? x.job.client_id === d.job.client_id : x.job.id === d.job.id
+      )
+      const clientName = d.job.client?.name || 'Cliente'
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
+      const doc = new jsPDF()
+      const pageW = doc.internal.pageSize.getWidth()
+      const margin = 14
+
+      doc.setFillColor(99, 102, 241)
+      doc.rect(0, 0, pageW, 26, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(businessName || 'WorkLedger', margin, 16)
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Estado de cuenta', pageW - margin, 16, { align: 'right' })
+
+      doc.setTextColor(30, 30, 30)
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      doc.text(clientName, margin, 38)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(110, 110, 110)
+      doc.text(`Emitido: ${new Date().toLocaleDateString('es-ES', { dateStyle: 'long' })}`, margin, 44)
+
+      const totalPending = rows.reduce((s, r) => s + r.pending, 0)
+      autoTable(doc, {
+        startY: 50,
+        head: [['Trabajo', 'Fecha', 'Pendiente']],
+        body: rows.map((r) => [
+          r.job.title,
+          r.job.scheduled_at ? formatDate(r.job.scheduled_at) : formatDate(r.job.created_at),
+          formatCurrency(r.pending),
+        ]),
+        foot: [['TOTAL', '', formatCurrency(totalPending)]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [99, 102, 241] },
+        footStyles: { fillColor: [238, 238, 248], textColor: [30, 30, 30], fontStyle: 'bold' },
+      })
+
+      // @ts-expect-error lastAutoTable lo agrega el plugin
+      let y = (doc.lastAutoTable?.finalY || 60) + 10
+      if (paymentInfo) {
+        doc.setTextColor(30, 30, 30)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(10)
+        doc.text('Formas de pago', margin, y)
+        y += 6
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(80, 80, 80)
+        doc.text(paymentInfo, margin, y)
+      }
+
+      const safeName = clientName.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+      doc.save(`estado-cuenta-${safeName}.pdf`)
+      toast.success('Estado de cuenta descargado')
+    } catch {
+      toast.error('Error al generar el estado de cuenta')
+    }
   }
 
   const remindWhatsApp = (d: Debtor) => {
@@ -200,6 +269,9 @@ export default function CobranzaPage() {
                       <Phone className="h-4 w-4" />
                     </Button>
                   )}
+                  <Button variant="outline" size="sm" onClick={() => generateStatement(d)} aria-label="Estado de cuenta PDF">
+                    <FileText className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
