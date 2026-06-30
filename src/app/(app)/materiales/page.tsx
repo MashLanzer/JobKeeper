@@ -19,7 +19,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { getMaterials, createMaterial, updateMaterial, deleteMaterial, type MaterialInput } from '@/services/materials'
-import { formatCurrency, cn } from '@/lib/utils'
+import { addMovement, getMovements, type MaterialMovement } from '@/services/material-movements'
+import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Material } from '@/types'
 
 const EMPTY: MaterialInput = { name: '', unit: '', price: 0, stock: 0, min_stock: 0, notes: '' }
@@ -34,6 +35,8 @@ export default function MaterialesPage() {
   const [nameError, setNameError] = useState(false)
   const [search, setSearch] = useState('')
   const [lowOnly, setLowOnly] = useState(false)
+  const [histMaterial, setHistMaterial] = useState<Material | null>(null)
+  const [movements, setMovements] = useState<MaterialMovement[]>([])
 
   const load = async () => {
     try {
@@ -111,10 +114,17 @@ export default function MaterialesPage() {
     setMaterials((prev) => prev.map((it) => (it.id === m.id ? { ...it, stock: next } : it)))
     try {
       await updateMaterial(m.id, { stock: next })
+      addMovement(m.id, delta, delta > 0 ? 'compra' : 'uso')
     } catch {
       setMaterials((prev) => prev.map((it) => (it.id === m.id ? { ...it, stock: m.stock } : it)))
       toast.error('No se pudo actualizar el stock')
     }
+  }
+
+  const openHistory = async (m: Material) => {
+    setHistMaterial(m)
+    setMovements([])
+    setMovements(await getMovements(m.id))
   }
 
   const isLow = (m: Material) => Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0
@@ -229,14 +239,15 @@ export default function MaterialesPage() {
             return (
               <Card key={m.id} className={low ? 'border-amber-500/40' : ''}>
                 <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                  <button className="min-w-0 text-left" onClick={() => openHistory(m)}>
                     <p className="font-medium truncate">{m.name}</p>
                     <p className="text-xs text-muted-foreground">
                       Stock: {Number(m.stock)}{m.unit ? ` ${m.unit}` : ''}
                       {low && <span className="text-pending font-medium"> · bajo</span>}
                       {Number(m.price) > 0 && <> · {formatCurrency(Number(m.price))}</>}
                     </p>
-                  </div>
+                    <p className="text-[10px] text-muted-foreground/70">Ver historial</p>
+                  </button>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {/* Ajuste rápido de stock */}
                     <Button
@@ -346,6 +357,32 @@ export default function MaterialesPage() {
               {saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Agregar material'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Historial de movimientos */}
+      <Dialog open={!!histMaterial} onOpenChange={(o) => !o && setHistMaterial(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Movimientos · {histMaterial?.name}</DialogTitle>
+          </DialogHeader>
+          {movements.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Sin movimientos registrados.</p>
+          ) : (
+            <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
+              {movements.map((mv) => (
+                <div key={mv.id} className="flex items-center justify-between text-sm border-b border-border pb-2">
+                  <div className="min-w-0">
+                    <p className="capitalize">{mv.reason || 'ajuste'}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(mv.created_at)}</p>
+                  </div>
+                  <span className={cn('font-semibold', Number(mv.delta) >= 0 ? 'text-money' : 'text-destructive')}>
+                    {Number(mv.delta) >= 0 ? '+' : ''}{Number(mv.delta)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
