@@ -93,12 +93,17 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
   const [reschedValue, setReschedValue] = useState('')
   const [reschedSaving, setReschedSaving] = useState(false)
   // Recuerda la vista y el modo de color preferidos.
-  const [view, setView] = useState<'mes' | 'semana' | 'agenda'>(() => {
+  const [view, setView] = useState<'mes' | 'semana' | 'dia' | 'agenda'>(() => {
     if (typeof window !== 'undefined') {
       const v = localStorage.getItem('cal_view')
-      if (v === 'mes' || v === 'semana' || v === 'agenda') return v
+      if (v === 'mes' || v === 'semana' || v === 'dia' || v === 'agenda') return v
     }
     return 'mes'
+  })
+  const [dayDate, setDayDate] = useState<Date>(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
   })
   const [colorBy, setColorBy] = useState<'estado' | 'categoria'>(() => {
     if (typeof window !== 'undefined') {
@@ -249,7 +254,7 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
     router.push('/trabajos/nuevo')
   }
 
-  // Vuelve al día de hoy (mes y semana) y lo selecciona.
+  // Vuelve al día de hoy (mes/semana/día) y lo selecciona.
   const goToday = () => {
     const t = new Date()
     onMonthChange(t.getFullYear(), t.getMonth() + 1)
@@ -258,7 +263,22 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
     ws.setHours(0, 0, 0, 0)
     setWeekStart(ws)
     setSelectedDay(t.getDate())
+    const dd = new Date(t)
+    dd.setHours(0, 0, 0, 0)
+    setDayDate(dd)
   }
+
+  const shiftDay = (delta: number) => {
+    const d = new Date(dayDate)
+    d.setDate(d.getDate() + delta)
+    setDayDate(d)
+    if (d.getFullYear() !== year || d.getMonth() + 1 !== month) {
+      onMonthChange(d.getFullYear(), d.getMonth() + 1)
+    }
+  }
+
+  const dayViewJobs = (jobsByDate[dateKey(dayDate)] || []).slice().sort(byTime)
+  const dayViewTotal = dayViewJobs.reduce((s, j) => s + Number(j.price), 0)
 
   const selectedDayTotal = selectedDayJobs.reduce((s, j) => s + Number(j.price), 0)
 
@@ -430,7 +450,7 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
     <div className="space-y-4">
       {/* View toggle */}
       <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-        {(['mes', 'semana', 'agenda'] as const).map((v) => (
+        {(['mes', 'semana', 'dia', 'agenda'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -441,7 +461,7 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            {v}
+            {v === 'dia' ? 'Día' : v}
           </button>
         ))}
       </div>
@@ -531,6 +551,66 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
                 </div>
               )
             })
+          )}
+        </div>
+      ) : view === 'dia' ? (
+        <div className="space-y-3">
+          {/* Day navigation */}
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={() => shiftDay(-1)}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <h2 className="text-sm font-semibold text-center capitalize">
+              {dayDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
+            </h2>
+            <Button variant="ghost" size="icon" onClick={() => shiftDay(1)}>
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {dayViewTotal > 0 && (
+            <p className="text-center text-xs text-muted-foreground">
+              {dayViewJobs.length} trabajo{dayViewJobs.length !== 1 ? 's' : ''} · {formatCurrency(dayViewTotal)}
+            </p>
+          )}
+
+          <Button variant="outline" size="sm" className="w-full" onClick={() => scheduleOnDay(dayDate)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Agendar este día
+          </Button>
+
+          {dayViewJobs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Sin trabajos este día</p>
+          ) : (
+            <div className="flex flex-col">
+              {dayViewJobs.map((job) => (
+                <div key={job.id} className="flex gap-3">
+                  <div className="w-12 text-right text-xs text-muted-foreground pt-3 tabular-nums flex-shrink-0">
+                    {timeOf(job) || '—'}
+                  </div>
+                  <Link
+                    href={`/trabajos/${job.id}`}
+                    className="flex-1 min-w-0 border-l-2 border-border pl-3 pb-3 relative block"
+                  >
+                    <span className={cn('absolute -left-[5px] top-3 h-2 w-2 rounded-full', dotColor(job))} />
+                    <Card className="hover:border-primary/50 transition-colors">
+                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-medium truncate">{job.title}</h4>
+                            <JobStatusBadge status={job.status} />
+                          </div>
+                          {job.client?.name && (
+                            <p className="text-xs text-muted-foreground truncate">{job.client.name}</p>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold text-money flex-shrink-0">{formatCurrency(job.price)}</span>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       ) : view === 'semana' ? (
