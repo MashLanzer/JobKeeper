@@ -57,6 +57,7 @@ export default function JobDetailPage() {
   const { job, loading, error, remove, update } = useJob(id)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [generatingQuote, setGeneratingQuote] = useState(false)
+  const [generatingOrder, setGeneratingOrder] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [signature, setSignature] = useState<string | null>(null)
@@ -812,6 +813,147 @@ export default function JobDetailPage() {
       toast.error('Error al generar la cotización')
     } finally {
       setGeneratingQuote(false)
+    }
+  }
+
+  // Orden de trabajo: documento previo al servicio (qué hacer, dónde, checklist).
+  const handleGenerateWorkOrder = async () => {
+    if (!job) return
+    setGeneratingOrder(true)
+    try {
+      const business = settings
+      const businessName = business.name.trim() || 'WorkLedger'
+      const contact = [business.phone, business.email].filter(Boolean).join('   ·   ')
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+      const pageW = doc.internal.pageSize.getWidth()
+      const margin = 20
+      let y = margin
+
+      doc.setFillColor(79, 70, 229)
+      doc.rect(0, 0, pageW, 28, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(18)
+      doc.setTextColor(255, 255, 255)
+      const folio = nextFolio('orden')
+      let nameX = margin
+      if (business.logo) {
+        try {
+          const fmt = business.logo.substring(business.logo.indexOf('/') + 1, business.logo.indexOf(';')).toUpperCase()
+          doc.setFillColor(255, 255, 255)
+          doc.roundedRect(margin, 5, 18, 18, 2, 2, 'F')
+          doc.addImage(business.logo, fmt, margin + 1, 6, 16, 16)
+          nameX = margin + 22
+        } catch {
+          // logo inválido
+        }
+      }
+      doc.text(businessName, nameX, 15)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`ORDEN DE TRABAJO #${folio}`, pageW - margin, 15, { align: 'right' })
+      if (contact) {
+        doc.setFontSize(8)
+        doc.text(contact, nameX, 22)
+      }
+
+      y = 40
+      doc.setTextColor(30, 30, 30)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(14)
+      doc.text(job.title, margin, y)
+      y += 6
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(100, 100, 100)
+      if (job.category) { doc.text(job.category, margin, y); y += 5 }
+      if (job.scheduled_at) {
+        doc.text(
+          `Programado: ${new Date(job.scheduled_at).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}`,
+          margin, y
+        )
+        y += 5
+      }
+      y += 4
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, y, pageW - margin, y)
+      y += 8
+
+      // Cliente / dirección
+      if (job.client || job.address) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11)
+        doc.setTextColor(79, 70, 229)
+        doc.text('CLIENTE', margin, y)
+        y += 6
+        doc.setTextColor(30, 30, 30)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        if (job.client?.name) { doc.text(job.client.name, margin, y); y += 5 }
+        if ((job.client as any)?.phone) { doc.text((job.client as any).phone, margin, y); y += 5 }
+        if (job.address) { doc.text(doc.splitTextToSize(job.address, pageW - margin * 2), margin, y); y += 8 }
+        y += 2
+      }
+
+      // Descripción
+      if (job.description) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11)
+        doc.setTextColor(79, 70, 229)
+        doc.text('DESCRIPCIÓN', margin, y)
+        y += 6
+        doc.setTextColor(60, 60, 60)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        const lines = doc.splitTextToSize(job.description, pageW - margin * 2)
+        doc.text(lines, margin, y)
+        y += lines.length * 5 + 4
+      }
+
+      // Checklist de tareas (casillas vacías para marcar en sitio)
+      if (checklist.length > 0) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11)
+        doc.setTextColor(79, 70, 229)
+        doc.text('TAREAS', margin, y)
+        y += 7
+        doc.setTextColor(40, 40, 40)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        for (const it of checklist) {
+          doc.setDrawColor(120, 120, 120)
+          doc.rect(margin, y - 3.5, 4, 4)
+          doc.text(it.label, margin + 7, y)
+          y += 7
+        }
+        y += 4
+      }
+
+      // Notas y firma
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, y, pageW - margin, y)
+      y += 8
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(100, 100, 100)
+      doc.text('NOTAS', margin, y)
+      y += 18
+      doc.setDrawColor(180, 180, 180)
+      doc.line(margin, y, pageW - margin, y)
+      y += 16
+      doc.line(margin, y, margin + 70, y)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(120, 120, 120)
+      doc.text('Firma del cliente', margin, y + 5)
+
+      const safeTitle = job.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+      const result = await sharePdf(doc, `orden-${safeTitle}.pdf`, `Orden de trabajo - ${job.title}`)
+      toast.success(result === 'shared' ? 'Orden lista para enviar' : 'Orden descargada')
+    } catch {
+      toast.error('Error al generar la orden')
+    } finally {
+      setGeneratingOrder(false)
     }
   }
 
@@ -1641,6 +1783,10 @@ export default function JobDetailPage() {
         <Button variant="outline" onClick={handleGenerateQuote} disabled={generatingQuote}>
           <ClipboardList className="h-4 w-4 mr-2" />
           {generatingQuote ? 'Generando...' : 'Cotización'}
+        </Button>
+        <Button variant="outline" onClick={handleGenerateWorkOrder} disabled={generatingOrder}>
+          <ClipboardList className="h-4 w-4 mr-2" />
+          {generatingOrder ? 'Generando...' : 'Orden'}
         </Button>
         <Button variant="outline" onClick={handleDuplicate}>
           <Copy className="h-4 w-4 mr-2" />

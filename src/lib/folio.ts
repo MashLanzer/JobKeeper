@@ -1,7 +1,7 @@
 // Folios consecutivos para recibos y cotizaciones. Se guardan en localStorage
 // (un contador por tipo de documento). Formato: #001, #002, ...
 
-type FolioType = 'recibo' | 'cotizacion'
+type FolioType = 'recibo' | 'cotizacion' | 'orden'
 
 function key(type: FolioType): string {
   return `folio_${type}`
