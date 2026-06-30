@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog'
 import { ClientForm } from '@/components/clients/client-form'
 import { EquipmentSection } from '@/components/clients/equipment-section'
+import { TagEditor } from '@/components/shared/tag-editor'
 
 export default function ClienteDetailPage() {
   const params = useParams()
@@ -50,6 +51,7 @@ export default function ClienteDetailPage() {
   const [generatingStatement, setGeneratingStatement] = useState(false)
   const [contacts, setContacts] = useState<ClientContact[]>([])
   const [contactNote, setContactNote] = useState('')
+  const [clientTags, setClientTags] = useState<string[]>([])
 
   useEffect(() => {
     const loadClient = async () => {
@@ -209,6 +211,21 @@ export default function ClienteDetailPage() {
   useEffect(() => {
     getContacts(id).then(setContacts).catch(() => {})
   }, [id])
+
+  // Etiquetas del cliente
+  useEffect(() => {
+    if (client) setClientTags(client.tags ?? [])
+  }, [client])
+
+  const saveClientTags = async (next: string[]) => {
+    setClientTags(next)
+    try {
+      const updated = await updateClient(id, { tags: next })
+      setClient(updated)
+    } catch {
+      toast.error('No se pudieron guardar las etiquetas')
+    }
+  }
 
   const logContact = async (kind: string, note?: string) => {
     const created = await addContact(id, kind, note)
@@ -385,6 +402,14 @@ export default function ClienteDetailPage() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Etiquetas */}
+      <Card>
+        <CardContent className="p-4 space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground">Etiquetas</p>
+          <TagEditor tags={clientTags} onChange={saveClientTags} placeholder="VIP, frecuente, moroso…" />
         </CardContent>
       </Card>
 

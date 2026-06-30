@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { StatusStepper } from '@/components/jobs/status-stepper'
+import { TagEditor } from '@/components/shared/tag-editor'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DetailSkeleton } from '@/components/shared/loading-skeleton'
 import { useJob } from '@/hooks/use-jobs'
@@ -58,6 +59,7 @@ export default function JobDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [generatingQuote, setGeneratingQuote] = useState(false)
   const [generatingOrder, setGeneratingOrder] = useState(false)
+  const [tags, setTags] = useState<string[]>([])
   const [, setTick] = useState(0) // fuerza re-render para el cronómetro en curso
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
@@ -259,8 +261,18 @@ export default function JobDetailPage() {
       setLineItems(job.line_items ?? [])
       setDiscount(String(job.discount ?? 0))
       setTaxRate(String(job.tax_rate ?? 0))
+      setTags(job.tags ?? [])
     }
   }, [job])
+
+  const saveTags = async (next: string[]) => {
+    setTags(next)
+    try {
+      await update({ tags: next })
+    } catch {
+      toast.error('No se pudieron guardar las etiquetas')
+    }
+  }
 
   const itemsSubtotal = lineItems.reduce((s, it) => s + Number(it.quantity) * Number(it.unit_price), 0)
   const discountNum = Number(discount) || 0
@@ -1227,6 +1239,16 @@ export default function JobDetailPage() {
         </TabsList>
 
         <TabsContent value="detalles" className="flex flex-col gap-6 mt-4">
+      {/* Etiquetas */}
+      <Card>
+        <CardContent className="p-4 space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <Tag className="h-3.5 w-3.5" /> Etiquetas
+          </p>
+          <TagEditor tags={tags} onChange={saveTags} />
+        </CardContent>
+      </Card>
+
       {/* Main info */}
       <Card>
         <CardContent className="p-4 space-y-4">
