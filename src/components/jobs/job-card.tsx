@@ -70,12 +70,19 @@ export function JobCard({ job, onMarkPaid }: JobCardProps) {
                   </span>
                 )}
               </div>
-              <span className={cn(
-                'inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-1',
-                categoryStyle(job.category).chip
-              )}>
-                {job.category}
-              </span>
+              <div className="flex flex-wrap items-center gap-1 mt-1">
+                <span className={cn(
+                  'inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                  categoryStyle(job.category).chip
+                )}>
+                  {job.category}
+                </span>
+                {(job.tags || []).map((t) => (
+                  <span key={t} className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {t}
+                  </span>
+                ))}
+              </div>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <PaymentBadge price={job.price} deposit={job.deposit} paidAt={job.paid_at} />

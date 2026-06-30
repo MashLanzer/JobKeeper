@@ -34,10 +34,15 @@ export default function TrabajosPage() {
     return {}
   })
   const [sort, setSort] = useState<SortKey>('reciente')
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
   const { jobs, loading, error, refetch } = useJobs(filters)
 
+  // Etiquetas presentes en los trabajos visibles (para filtrar).
+  const allTags = Array.from(new Set(jobs.flatMap((j) => j.tags || []))).sort()
+  const tagFiltered = tagFilter ? jobs.filter((j) => (j.tags || []).includes(tagFilter)) : jobs
+
   // Ordena según el criterio elegido; los urgentes siempre quedan primero.
-  const sortedJobs = [...jobs].sort((a, b) => {
+  const sortedJobs = [...tagFiltered].sort((a, b) => {
     const ua = a.priority === 'urgente' ? 0 : 1
     const ub = b.priority === 'urgente' ? 0 : 1
     if (ua !== ub) return ua - ub
@@ -86,6 +91,30 @@ export default function TrabajosPage() {
       />
 
       <JobFiltersBar filters={filters} onChange={setFilters} />
+
+      {allTags.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {tagFilter && (
+            <button
+              onClick={() => setTagFilter(null)}
+              className="text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap bg-muted text-muted-foreground hover:text-foreground"
+            >
+              ✕ etiqueta
+            </button>
+          )}
+          {allTags.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTagFilter(tagFilter === t ? null : t)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap transition-colors ${
+                tagFilter === t ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
 
       {jobs.length > 1 && (
         <div className="flex items-center justify-end gap-2">
