@@ -36,6 +36,33 @@ async function native() {
   return Capacitor.isNativePlatform()
 }
 
+/**
+ * Envía una notificación de prueba (a los pocos segundos) para que el usuario
+ * confirme que los recordatorios funcionan en su teléfono.
+ * Devuelve 'ok' | 'no-permiso' | 'no-nativo'.
+ */
+export async function sendTestReminder(): Promise<'ok' | 'no-permiso' | 'no-nativo'> {
+  if (!(await native())) return 'no-nativo'
+  const granted = await ensurePermission()
+  if (!granted) return 'no-permiso'
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: 2147480000,
+          title: 'Recordatorio de prueba',
+          body: 'Así se verán los avisos de tus trabajos 👍',
+          schedule: { at: new Date(Date.now() + 3000) },
+        },
+      ],
+    })
+    return 'ok'
+  } catch {
+    return 'no-permiso'
+  }
+}
+
 /** Pide permiso de notificaciones (Android 13+). */
 export async function ensurePermission(): Promise<boolean> {
   try {

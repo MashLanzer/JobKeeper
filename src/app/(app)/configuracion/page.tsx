@@ -22,7 +22,8 @@ import { getTemplates } from '@/services/templates'
 import { getPin, setPin, clearPin } from '@/lib/pin'
 import { getCurrency, setCurrency, CURRENCIES } from '@/lib/currency'
 import { getPdfPrefs, setPdfPrefs, type PdfPrefs } from '@/lib/pdf-prefs'
-import { ensurePermission, syncAllReminders } from '@/lib/local-notifications'
+import { ensurePermission, syncAllReminders, sendTestReminder } from '@/lib/local-notifications'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 
@@ -36,6 +37,11 @@ export default function ConfiguracionPage() {
     name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '', payment_info: '',
   })
   const [savingBusiness, setSavingBusiness] = useState(false)
+  // Huella de los datos guardados para detectar cambios sin guardar.
+  const bizFingerprint = (b: BusinessSettings) =>
+    JSON.stringify([b.name, b.phone, b.email, b.logo, b.review_link, b.payment_info])
+  const [savedBizPrint, setSavedBizPrint] = useState('')
+  const bizDirty = bizFingerprint(business) !== savedBizPrint
 
   useEffect(() => {
     const load = async () => {
@@ -68,6 +74,7 @@ export default function ConfiguracionPage() {
       }
 
       setBusiness(settings)
+      setSavedBizPrint(bizFingerprint(settings))
       if (settings.income_goal > 0) {
         setSavedGoal(settings.income_goal)
         setGoalInput(String(settings.income_goal))
@@ -87,6 +94,7 @@ export default function ConfiguracionPage() {
         review_link: (business.review_link || '').trim(),
         payment_info: (business.payment_info || '').trim(),
       })
+      setSavedBizPrint(bizFingerprint(business))
       toast.success('Datos del negocio guardados')
     } catch {
       toast.error('Error al guardar los datos del negocio')
@@ -156,6 +164,13 @@ export default function ConfiguracionPage() {
     setReminderLead(v)
     localStorage.setItem('reminder_lead', v)
     await syncAllReminders()
+  }
+
+  const handleTestReminder = async () => {
+    const res = await sendTestReminder()
+    if (res === 'ok') toast.success('Te llegará una notificación en unos segundos')
+    else if (res === 'no-permiso') toast.error('Activa el permiso de notificaciones')
+    else toast.info('La prueba solo funciona en la app del teléfono')
   }
 
   const togglePdfPref = (key: keyof PdfPrefs, value: boolean) => {
@@ -355,8 +370,11 @@ export default function ConfiguracionPage() {
             />
             <p className="text-[10px] text-muted-foreground">Se incluye en los recordatorios de cobro.</p>
           </div>
-          <Button onClick={handleSaveBusiness} size="sm" className="w-full" disabled={savingBusiness}>
-            {savingBusiness ? 'Guardando...' : 'Guardar datos del negocio'}
+          {bizDirty && (
+            <p className="text-xs text-pending text-center">Tienes cambios sin guardar</p>
+          )}
+          <Button onClick={handleSaveBusiness} size="sm" className="w-full" disabled={savingBusiness || !bizDirty}>
+            {savingBusiness ? 'Guardando...' : bizDirty ? 'Guardar datos del negocio' : 'Guardado'}
           </Button>
         </CardContent>
       </Card>
@@ -483,6 +501,10 @@ export default function ConfiguracionPage() {
               <p className="text-[10px] text-muted-foreground">Solo aplica a trabajos con fecha y hora programada.</p>
             </div>
           )}
+          <Button variant="outline" size="sm" className="w-full" onClick={handleTestReminder}>
+            <Bell className="h-4 w-4 mr-2" />
+            Probar notificación
+          </Button>
         </CardContent>
       </Card>
 
@@ -590,14 +612,21 @@ export default function ConfiguracionPage() {
       </Card>
 
       {/* Sign out */}
-      <Button
-        variant="outline"
-        className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-        onClick={handleSignOut}
-      >
-        <LogOut className="h-4 w-4 mr-2" />
-        Cerrar sesión
-      </Button>
+      <ConfirmDialog
+        title="¿Cerrar sesión?"
+        description="Tendrás que iniciar sesión de nuevo para volver a entrar."
+        confirmLabel="Cerrar sesión"
+        onConfirm={handleSignOut}
+        trigger={
+          <Button
+            variant="outline"
+            className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Cerrar sesión
+          </Button>
+        }
+      />
     </div>
   )
 }
