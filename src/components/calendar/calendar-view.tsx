@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Plus, CalendarCheck, CalendarClock, Navigation, Play, CheckCircle2, DollarSign, Share2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CalendarCheck, CalendarClock, Navigation, Play, CheckCircle2, DollarSign, Share2, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -37,8 +37,15 @@ const FILTER_CHIPS: { value: CalFilter; label: string }[] = [
   { value: 'vencidos', label: 'Vencidos' },
 ]
 
+export interface MaintenanceEvent {
+  id: string // client id
+  name: string
+  date: string // ISO del próximo servicio
+}
+
 interface CalendarViewProps {
   jobs: Job[]
+  maintenances?: MaintenanceEvent[]
   year: number
   month: number
   onMonthChange: (year: number, month: number) => void
@@ -78,7 +85,7 @@ const STATUS_COLORS: Record<string, string> = {
 const dateKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: CalendarViewProps) {
+export function CalendarView({ jobs, maintenances = [], year, month, onMonthChange, onChanged }: CalendarViewProps) {
   const router = useRouter()
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [reschedJob, setReschedJob] = useState<Job | null>(null)
@@ -178,7 +185,36 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
     return map
   }, [visibleJobs, year, month])
 
+  const maintByDay = useMemo(() => {
+    const map: Record<number, MaintenanceEvent[]> = {}
+    maintenances.forEach((m) => {
+      const d = new Date(m.date)
+      if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+        const day = d.getDate()
+        if (!map[day]) map[day] = []
+        map[day].push(m)
+      }
+    })
+    return map
+  }, [maintenances, year, month])
+
   const selectedDayJobs = (selectedDay ? jobsByDay[selectedDay] || [] : []).slice().sort(byTime)
+  const selectedDayMaint = selectedDay ? maintByDay[selectedDay] || [] : []
+
+  // Agenda un mantenimiento para un cliente en una fecha concreta.
+  const scheduleMaintenanceFor = (m: MaintenanceEvent, day: number) => {
+    const at = new Date(year, month - 1, day, 9, 0, 0, 0)
+    sessionStorage.setItem(
+      'prefill_job',
+      JSON.stringify({
+        title: 'Mantenimiento A/C',
+        category: 'A/C - Mantenimiento',
+        client_id: m.id,
+        scheduled_at: at.toISOString(),
+      })
+    )
+    router.push('/trabajos/nuevo')
+  }
 
   const prevMonth = () => {
     if (month === 1) {
@@ -678,6 +714,9 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
                 {hasOverdue && (
                   <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />
                 )}
+                {maintByDay[day] && (
+                  <Wrench className="absolute bottom-0.5 left-0.5 h-2.5 w-2.5 text-amber-500" />
+                )}
               </button>
             )
           })}
@@ -724,8 +763,27 @@ export function CalendarView({ jobs, year, month, onMonthChange, onChanged }: Ca
             )}
           </div>
 
+          {selectedDayMaint.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {selectedDayMaint.map((m) => (
+                <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Wrench className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">Mantenimiento · {m.name}</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-8 flex-shrink-0" onClick={() => scheduleMaintenanceFor(m, selectedDay)}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Agendar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {selectedDayJobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin trabajos este día</p>
+            selectedDayMaint.length === 0 && <p className="text-sm text-muted-foreground">Sin trabajos este día</p>
           ) : (
             <div className="flex flex-col gap-3">
               {selectedDayJobs.map((job) => (
