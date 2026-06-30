@@ -17,6 +17,7 @@ import { useJobs } from '@/hooks/use-jobs'
 import { updateJob } from '@/services/jobs'
 import { getPayments, addPayment } from '@/services/payments'
 import { haptic } from '@/lib/haptics'
+import { formatCurrency } from '@/lib/utils'
 import type { JobFilters } from '@/services/jobs'
 import type { Job } from '@/types'
 
@@ -79,7 +80,7 @@ export default function TrabajosPage() {
     <div className="space-y-6 page-transition">
       <PageHeader
         title="Trabajos"
-        description={`${jobs.length} trabajo${jobs.length !== 1 ? 's' : ''}`}
+        description={`${tagFiltered.length} trabajo${tagFiltered.length !== 1 ? 's' : ''} · ${formatCurrency(tagFiltered.reduce((s, j) => s + Number(j.price), 0))}`}
         action={
           <Button asChild size="sm">
             <Link href="/trabajos/nuevo">

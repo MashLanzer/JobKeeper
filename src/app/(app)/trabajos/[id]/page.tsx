@@ -1872,35 +1872,44 @@ export default function JobDetailPage() {
       </Tabs>
 
       {/* Actions */}
-      <div className="grid grid-cols-2 gap-2">
-        <Button asChild className="col-span-2">
+      <div className="space-y-3">
+        <Button asChild className="w-full">
           <Link href={`/trabajos/${id}/editar`}>
             <Edit className="h-4 w-4 mr-2" />
             Editar trabajo
           </Link>
         </Button>
-        <Button variant="outline" onClick={handleGeneratePDF} disabled={generatingPdf}>
-          <Share2 className="h-4 w-4 mr-2" />
-          {generatingPdf ? 'Generando...' : 'Recibo'}
-        </Button>
-        <Button variant="outline" onClick={handleGenerateQuote} disabled={generatingQuote}>
-          <ClipboardList className="h-4 w-4 mr-2" />
-          {generatingQuote ? 'Generando...' : 'Cotización'}
-        </Button>
-        <Button variant="outline" onClick={handleGenerateWorkOrder} disabled={generatingOrder}>
-          <ClipboardList className="h-4 w-4 mr-2" />
-          {generatingOrder ? 'Generando...' : 'Orden'}
-        </Button>
-        <Button variant="outline" onClick={handleDuplicate}>
-          <Copy className="h-4 w-4 mr-2" />
-          Duplicar
-        </Button>
-        <Button variant="outline" onClick={handleSaveTemplate}>
-          <ClipboardList className="h-4 w-4 mr-2" />
-          Plantilla
-        </Button>
+
+        {/* Documentos */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">Documentos</p>
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" size="sm" onClick={handleGeneratePDF} disabled={generatingPdf}>
+              {generatingPdf ? '…' : 'Recibo'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleGenerateQuote} disabled={generatingQuote}>
+              {generatingQuote ? '…' : 'Cotización'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleGenerateWorkOrder} disabled={generatingOrder}>
+              {generatingOrder ? '…' : 'Orden'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Más acciones */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" onClick={handleDuplicate}>
+            <Copy className="h-4 w-4 mr-2" />
+            Duplicar
+          </Button>
+          <Button variant="outline" onClick={handleSaveTemplate}>
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Plantilla
+          </Button>
+        </div>
+
         {job.status === 'completado' && settings.review_link && (
-          <Button variant="outline" onClick={handleRequestReview} className="col-span-2 text-amber-600 border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950">
+          <Button variant="outline" onClick={handleRequestReview} className="w-full text-amber-600 border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950">
             <Star className="h-4 w-4 mr-2" />
             Pedir reseña al cliente
           </Button>
