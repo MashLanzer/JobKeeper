@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Package, Plus, Minus, Trash2, Edit, AlertTriangle, Search, X } from 'lucide-react'
+import { Package, Plus, Minus, Trash2, Edit, AlertTriangle, Search, X, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -118,6 +118,18 @@ export default function MaterialesPage() {
   }
 
   const isLow = (m: Material) => Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0
+
+  // Genera y comparte (WhatsApp) la lista de compra de los materiales bajos.
+  const shareShoppingList = () => {
+    const low = materials.filter(isLow)
+    if (low.length === 0) return
+    const lines = low.map((m) => {
+      const need = Math.max(0, Number(m.min_stock) - Number(m.stock))
+      return `• ${m.name} — tengo ${Number(m.stock)}${m.unit ? ` ${m.unit}` : ''}, mín ${Number(m.min_stock)}${need > 0 ? ` (faltan ${need})` : ''}`
+    })
+    const text = `Lista de compra:\n${lines.join('\n')}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+  }
   const lowStock = materials.filter(isLow)
   const inventoryValue = materials.reduce((s, m) => s + Number(m.stock) * Number(m.price), 0)
 
@@ -183,6 +195,13 @@ export default function MaterialesPage() {
             {lowOnly ? 'Ver todos' : 'Ver solo bajos'}
           </span>
         </button>
+      )}
+
+      {lowStock.length > 0 && (
+        <Button variant="outline" size="sm" className="w-full" onClick={shareShoppingList}>
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          Compartir lista de compra
+        </Button>
       )}
 
       {loading ? (
