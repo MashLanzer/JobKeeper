@@ -19,7 +19,11 @@ const expenseSchema = z.object({
   date: z.string().min(1, 'La fecha es requerida'),
   job_id: z.string().optional(),
   notes: z.string().optional(),
+  miles: z.number().nonnegative().optional(),
 })
+
+// Tarifa estándar de millaje (referencia IRS). Solo para estimar la deducción.
+export const MILEAGE_RATE = 0.67
 
 type ExpenseFormData = z.infer<typeof expenseSchema>
 
@@ -90,6 +94,21 @@ export function ExpenseForm({ jobs = [], onSubmit, isLoading, submitLabel = 'Gua
             <p className="text-xs text-destructive">{errors.date.message}</p>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="miles">Millas recorridas (opcional)</Label>
+        <Input
+          id="miles"
+          type="number"
+          min="0"
+          step="0.1"
+          placeholder="Ej: 24"
+          {...register('miles', { setValueAs: (v) => (v === '' || v === null ? undefined : Number(v)) })}
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Para deducción de millaje (≈ ${MILEAGE_RATE}/milla).
+        </p>
       </div>
 
       <div className="space-y-2">

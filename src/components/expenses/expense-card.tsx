@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { getReceiptUrl } from '@/services/expense-receipts'
+import { MILEAGE_RATE } from '@/components/expenses/expense-form'
 import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Expense } from '@/types'
@@ -50,6 +51,12 @@ export function ExpenseCard({ expense, onDelete }: ExpenseCardProps) {
 
             {expense.notes && (
               <p className="text-xs text-muted-foreground mt-1">{expense.notes}</p>
+            )}
+
+            {!!expense.miles && Number(expense.miles) > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {Number(expense.miles)} mi · deducción ≈ {formatCurrency(Number(expense.miles) * MILEAGE_RATE)}
+              </p>
             )}
 
             {expense.receipt_path && (
