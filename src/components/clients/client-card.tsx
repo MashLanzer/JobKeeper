@@ -52,6 +52,16 @@ export function ClientCard({ client }: ClientCardProps) {
                   </div>
                 )}
               </div>
+
+              {(client.tags || []).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {(client.tags || []).map((t) => (
+                    <span key={t} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

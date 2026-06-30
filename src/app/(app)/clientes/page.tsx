@@ -18,12 +18,16 @@ import type { ClientType } from '@/types'
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'todos' | ClientType>('todos')
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
   const { clients, loading, error, refetch } = useClients(search || undefined)
+
+  const allTags = Array.from(new Set(clients.flatMap((c) => c.tags || []))).sort()
 
   // Trata los clientes sin tipo como "cliente".
   const filtered = clients.filter((c) => {
-    if (filter === 'todos') return true
-    return (c.type || 'cliente') === filter
+    if (filter !== 'todos' && (c.type || 'cliente') !== filter) return false
+    if (tagFilter && !(c.tags || []).includes(tagFilter)) return false
+    return true
   })
 
   const tabs: { value: 'todos' | ClientType; label: string }[] = [
@@ -85,6 +89,23 @@ export default function ClientesPage() {
           </button>
         ))}
       </div>
+
+      {allTags.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {allTags.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTagFilter(tagFilter === t ? null : t)}
+              className={cn(
+                'text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap transition-colors',
+                tagFilter === t ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <ListSkeleton count={4} />
