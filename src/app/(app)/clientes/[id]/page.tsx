@@ -18,6 +18,7 @@ import { deleteClient, updateClient } from '@/services/clients'
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils'
 import { nextDueDate, maintenanceStatus, hasMaintenance } from '@/lib/maintenance'
 import { getPaymentsTotalForJobs } from '@/services/payments'
+import { getContacts, addContact, deleteContact, type ClientContact } from '@/services/client-contacts'
 import { getSettings, businessNameOf } from '@/services/settings'
 import type { Client, Job } from '@/types'
 import {
@@ -47,6 +48,8 @@ export default function ClienteDetailPage() {
   const [paymentsTotal, setPaymentsTotal] = useState(0)
   const [paymentsMap, setPaymentsMap] = useState<Record<string, number>>({})
   const [generatingStatement, setGeneratingStatement] = useState(false)
+  const [contacts, setContacts] = useState<ClientContact[]>([])
+  const [contactNote, setContactNote] = useState('')
 
   useEffect(() => {
     const loadClient = async () => {
@@ -202,6 +205,27 @@ export default function ClienteDetailPage() {
     }
   }
 
+  // Bitácora de contacto
+  useEffect(() => {
+    getContacts(id).then(setContacts).catch(() => {})
+  }, [id])
+
+  const logContact = async (kind: string, note?: string) => {
+    const created = await addContact(id, kind, note)
+    if (created) setContacts((prev) => [created, ...prev])
+  }
+
+  const handleAddNote = async () => {
+    if (!contactNote.trim()) return
+    await logContact('nota', contactNote.trim())
+    setContactNote('')
+  }
+
+  const handleDeleteContact = async (cId: string) => {
+    setContacts((prev) => prev.filter((c) => c.id !== cId))
+    await deleteContact(cId)
+  }
+
   // Agenda un mantenimiento prellenado para este cliente.
   const scheduleMaintenance = () => {
     if (!client) return
@@ -310,7 +334,7 @@ export default function ClienteDetailPage() {
             <div className="flex gap-2 mb-4">
               {client.phone && (
                 <Button asChild variant="outline" className="flex-1 h-10" size="sm">
-                  <a href={`tel:${client.phone}`}>
+                  <a href={`tel:${client.phone}`} onClick={() => logContact('llamada')}>
                     <Phone className="h-4 w-4 mr-1.5" />
                     Llamar
                   </a>
@@ -318,7 +342,7 @@ export default function ClienteDetailPage() {
               )}
               {client.phone && (
                 <Button asChild variant="outline" className="flex-1 h-10 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950" size="sm">
-                  <a href={`https://wa.me/${client.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://wa.me/${client.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={() => logContact('whatsapp')}>
                     <MessageCircle className="h-4 w-4 mr-1.5" />
                     WhatsApp
                   </a>
@@ -326,7 +350,7 @@ export default function ClienteDetailPage() {
               )}
               {client.email && (
                 <Button asChild variant="outline" className="flex-1 h-10" size="sm">
-                  <a href={`mailto:${client.email}`}>
+                  <a href={`mailto:${client.email}`} onClick={() => logContact('email')}>
                     <Mail className="h-4 w-4 mr-1.5" />
                     Email
                   </a>
@@ -438,6 +462,51 @@ export default function ClienteDetailPage() {
 
       {/* Equipment */}
       <EquipmentSection clientId={id} jobs={jobs} />
+
+      {/* Bitácora de contacto */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Bitácora de contacto
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Anotar nota, acuerdo, llamada..."
+              value={contactNote}
+              onChange={(e) => setContactNote(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddNote() }}
+            />
+            <Button size="sm" onClick={handleAddNote} disabled={!contactNote.trim()}>Anotar</Button>
+          </div>
+          {contacts.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Sin registros. Llamadas y mensajes se anotan solos.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {contacts.map((c) => (
+                <div key={c.id} className="flex items-start justify-between gap-2 text-sm group">
+                  <div className="min-w-0">
+                    <p className="capitalize">
+                      <span className="text-muted-foreground">{c.kind}</span>
+                      {c.note ? ` · ${c.note}` : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{formatDate(c.created_at)}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteContact(c.id)}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                    aria-label="Eliminar registro"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Financial balance */}
       {jobs.length > 0 && (() => {
