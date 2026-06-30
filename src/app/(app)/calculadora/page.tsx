@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Calculator, AirVent, ArrowRightLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Calculator, AirVent, ArrowRightLeft, Thermometer, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 import { cn } from '@/lib/utils'
@@ -11,17 +13,60 @@ import { cn } from '@/lib/utils'
 const BTU_PER_FT2 = 25 // estimación para clima cálido (residencial)
 
 export default function CalculadoraPage() {
+  const router = useRouter()
   const [area, setArea] = useState('')
   const [unit, setUnit] = useState<'ft2' | 'm2'>('ft2')
   const [btuInput, setBtuInput] = useState('')
 
+  // Ajustes de carga
+  const [sunny, setSunny] = useState(false)
+  const [highCeiling, setHighCeiling] = useState(false)
+  const [kitchen, setKitchen] = useState(false)
+  const [people, setPeople] = useState('')
+
+  // Delta T
+  const [returnT, setReturnT] = useState('')
+  const [supplyT, setSupplyT] = useState('')
+
+  // Conversor de temperatura
+  const [tempVal, setTempVal] = useState('')
+  const [tempUnit, setTempUnit] = useState<'C' | 'F'>('F')
+
   const areaNum = Number(area) || 0
   const areaFt2 = unit === 'ft2' ? areaNum : areaNum * 10.7639
-  const recommendedBtu = Math.round((areaFt2 * BTU_PER_FT2) / 1000) * 1000
+  let btu = areaFt2 * BTU_PER_FT2
+  if (sunny) btu *= 1.1
+  if (highCeiling) btu *= 1.1
+  if (kitchen) btu += 4000
+  const peopleNum = Number(people) || 0
+  if (peopleNum > 2) btu += (peopleNum - 2) * 600
+  const recommendedBtu = Math.round(btu / 1000) * 1000
   const recommendedTons = recommendedBtu / 12000
 
   const btuNum = Number(btuInput) || 0
   const tons = btuNum / 12000
+
+  // Delta T: retorno − suministro (°F). Normal entre 15 y 20.
+  const dt = returnT !== '' && supplyT !== '' ? Number(returnT) - Number(supplyT) : null
+  const dtStatus =
+    dt === null ? null : dt < 15 ? 'bajo' : dt > 20 ? 'alto' : 'normal'
+
+  // Conversor
+  const tv = Number(tempVal)
+  const tempConverted =
+    tempVal === '' || isNaN(tv) ? null : tempUnit === 'F' ? ((tv - 32) * 5) / 9 : (tv * 9) / 5 + 32
+
+  const createInstallJob = () => {
+    sessionStorage.setItem(
+      'prefill_job',
+      JSON.stringify({
+        title: `Instalación A/C ${recommendedTons.toFixed(1)} ton`,
+        category: 'A/C - Instalación',
+        description: `Capacidad estimada: ${recommendedBtu.toLocaleString()} BTU (${recommendedTons.toFixed(1)} ton) para ${areaNum} ${unit === 'ft2' ? 'ft²' : 'm²'}.`,
+      })
+    )
+    router.push('/trabajos/nuevo')
+  }
 
   return (
     <div className="space-y-6 page-transition">
@@ -68,6 +113,40 @@ export default function CalculadoraPage() {
             </div>
           </div>
 
+          {/* Ajustes de carga */}
+          <div className="space-y-2">
+            <Label className="text-xs">Ajustes del espacio</Label>
+            <div className="flex flex-wrap gap-2">
+              {([
+                ['Mucho sol', sunny, setSunny],
+                ['Techo alto', highCeiling, setHighCeiling],
+                ['Cocina', kitchen, setKitchen],
+              ] as const).map(([label, val, set]) => (
+                <button
+                  key={label}
+                  onClick={() => set((v) => !v)}
+                  className={cn(
+                    'text-xs font-medium px-3 py-1.5 rounded-full transition-colors',
+                    val ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Label className="text-xs whitespace-nowrap">Personas (habitual)</Label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="2"
+                value={people}
+                onChange={(e) => setPeople(e.target.value)}
+                className="h-8 w-20"
+              />
+            </div>
+          </div>
+
           {areaNum > 0 && (
             <div className="rounded-lg bg-muted/50 p-3 space-y-1">
               <div className="flex justify-between text-sm">
@@ -79,8 +158,12 @@ export default function CalculadoraPage() {
                 <span className="font-semibold">{recommendedTons.toFixed(1)} ton</span>
               </div>
               <p className="text-[11px] text-muted-foreground pt-1">
-                Estimación general ({BTU_PER_FT2} BTU/ft²). Ajusta según aislamiento, ventanas, techos altos y ocupación.
+                Estimación general ({BTU_PER_FT2} BTU/ft² + ajustes). Verifica con cálculo de carga térmica.
               </p>
+              <Button size="sm" variant="outline" className="w-full mt-2" onClick={createInstallJob}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Crear trabajo de instalación
+              </Button>
             </div>
           )}
         </CardContent>
@@ -112,6 +195,93 @@ export default function CalculadoraPage() {
             </div>
           )}
           <p className="text-[11px] text-muted-foreground">1 tonelada = 12,000 BTU/h</p>
+        </CardContent>
+      </Card>
+
+      {/* Delta T (split de temperatura) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Thermometer className="h-4 w-4 text-primary" />
+            Delta T (split de temperatura)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Aire de retorno (°F)</Label>
+              <Input type="number" placeholder="Ej: 75" value={returnT} onChange={(e) => setReturnT(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Aire de suministro (°F)</Label>
+              <Input type="number" placeholder="Ej: 57" value={supplyT} onChange={(e) => setSupplyT(e.target.value)} />
+            </div>
+          </div>
+          {dt !== null && (
+            <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Delta T</span>
+                <span className="font-semibold">{dt.toFixed(1)} °F</span>
+              </div>
+              <p
+                className={cn(
+                  'text-xs font-medium',
+                  dtStatus === 'normal' && 'text-money',
+                  dtStatus !== 'normal' && 'text-pending'
+                )}
+              >
+                {dtStatus === 'normal' && 'Normal (15–20 °F) ✓'}
+                {dtStatus === 'bajo' && 'Bajo: posible falta de refrigerante o exceso de flujo de aire'}
+                {dtStatus === 'alto' && 'Alto: posible flujo de aire bajo o filtro/serpentín sucio'}
+              </p>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">Lo normal es una caída de 15–20 °F entre retorno y suministro.</p>
+        </CardContent>
+      </Card>
+
+      {/* Conversor de temperatura */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ArrowRightLeft className="h-4 w-4 text-primary" />
+            Conversor °C ↔ °F
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1.5">
+              <Label className="text-xs">Temperatura</Label>
+              <Input type="number" placeholder="Ej: 72" value={tempVal} onChange={(e) => setTempVal(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Unidad</Label>
+              <div className="flex bg-muted rounded-lg p-1">
+                {(['F', 'C'] as const).map((u) => (
+                  <button
+                    key={u}
+                    onClick={() => setTempUnit(u)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                      tempUnit === u
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    °{u}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {tempConverted !== null && (
+            <div className="rounded-lg bg-muted/50 p-3 flex justify-between text-sm">
+              <span className="text-muted-foreground">Equivale a</span>
+              <span className="font-semibold">
+                {tempConverted.toFixed(1)} °{tempUnit === 'F' ? 'C' : 'F'}
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
