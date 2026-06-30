@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, Download, FileText, Receipt, Loader2 } from 
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/shared/page-header'
 import { getJobsByMonth } from '@/services/jobs'
 import { getExpensesByMonth, getFinanceSummary } from '@/services/expenses'
@@ -26,13 +28,28 @@ export default function ReportesPage() {
   const loading = busy !== null
   const [businessName, setBusinessName] = useState('WorkLedger')
   const [stats, setStats] = useState<BusinessStats | null>(null)
+  const [monthSummary, setMonthSummary] = useState<{ totalIncome: number; totalExpenses: number; netProfit: number } | null>(null)
+  const [taxRate, setTaxRate] = useState('0')
 
   const atCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
 
   useEffect(() => {
     getSettings().then((s) => setBusinessName(businessNameOf(s))).catch(() => {})
     getBusinessStats().then(setStats).catch(() => {})
+    try { setTaxRate(localStorage.getItem('tax_rate_pref') || '0') } catch { /* ignore */ }
   }, [])
+
+  useEffect(() => {
+    getFinanceSummary(year, month).then(setMonthSummary).catch(() => setMonthSummary(null))
+  }, [year, month])
+
+  const handleTaxRate = (v: string) => {
+    setTaxRate(v)
+    try { localStorage.setItem('tax_rate_pref', v) } catch { /* ignore */ }
+  }
+
+  const net = monthSummary?.netProfit || 0
+  const taxEstimate = net > 0 ? net * ((Number(taxRate) || 0) / 100) : 0
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -388,6 +405,46 @@ export default function ReportesPage() {
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
+
+      {/* Resumen del mes (visible) + estimado de impuestos */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Resumen de {MONTH_NAMES[month - 1]}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Ingresos (cobrado)</span>
+            <span className="font-semibold text-money">{formatCurrency(monthSummary?.totalIncome || 0)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Gastos</span>
+            <span className="font-medium text-destructive">-{formatCurrency(monthSummary?.totalExpenses || 0)}</span>
+          </div>
+          <div className="h-px bg-border" />
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Ganancia neta</span>
+            <span className={`font-bold ${net >= 0 ? 'text-money' : 'text-destructive'}`}>{formatCurrency(net)}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <Label className="text-xs whitespace-nowrap">Impuesto estimado (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={taxRate}
+              onChange={(e) => handleTaxRate(e.target.value)}
+              className="h-8 w-20 text-right"
+            />
+          </div>
+          {Number(taxRate) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Impuesto estimado</span>
+              <span className="font-semibold text-pending">{formatCurrency(taxEstimate)}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Advanced stats */}
       {stats && stats.completedCount > 0 && (
