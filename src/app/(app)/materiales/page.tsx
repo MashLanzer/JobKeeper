@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getMaterials, createMaterial, updateMaterial, deleteMaterial, type MaterialInput } from '@/services/materials'
 import { addMovement, getMovements, type MaterialMovement } from '@/services/material-movements'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export default function MaterialesPage() {
   const [nameError, setNameError] = useState(false)
   const [search, setSearch] = useState('')
   const [lowOnly, setLowOnly] = useState(false)
+  const [sort, setSort] = useState<'nombre' | 'bajo' | 'valor'>('nombre')
   const [histMaterial, setHistMaterial] = useState<Material | null>(null)
   const [movements, setMovements] = useState<MaterialMovement[]>([])
 
@@ -145,9 +147,18 @@ export default function MaterialesPage() {
   const inventoryValue = materials.reduce((s, m) => s + Number(m.stock) * Number(m.price), 0)
 
   const term = search.trim().toLowerCase()
-  const filtered = materials.filter(
-    (m) => (!lowOnly || isLow(m)) && (!term || m.name.toLowerCase().includes(term))
-  )
+  const filtered = materials
+    .filter((m) => (!lowOnly || isLow(m)) && (!term || m.name.toLowerCase().includes(term)))
+    .sort((a, b) => {
+      if (sort === 'bajo') {
+        const la = isLow(a) ? 0 : 1
+        const lb = isLow(b) ? 0 : 1
+        if (la !== lb) return la - lb
+        return a.name.localeCompare(b.name)
+      }
+      if (sort === 'valor') return Number(b.stock) * Number(b.price) - Number(a.stock) * Number(a.price)
+      return a.name.localeCompare(b.name)
+    })
 
   return (
     <div className="space-y-6 page-transition">
@@ -185,6 +196,22 @@ export default function MaterialesPage() {
               <X className="h-4 w-4" />
             </Button>
           )}
+        </div>
+      )}
+
+      {materials.length > 1 && (
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-xs text-muted-foreground">Ordenar:</span>
+          <Select value={sort} onValueChange={(v) => setSort(v as typeof sort)}>
+            <SelectTrigger className="h-8 w-auto gap-1 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nombre">Nombre</SelectItem>
+              <SelectItem value="bajo">Stock bajo primero</SelectItem>
+              <SelectItem value="valor">Mayor valor</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -247,6 +274,7 @@ export default function MaterialesPage() {
                       {low && <span className="text-pending font-medium"> · bajo</span>}
                       {Number(m.price) > 0 && <> · {formatCurrency(Number(m.price))}</>}
                     </p>
+                    {m.supplier && <p className="text-[10px] text-muted-foreground truncate">Proveedor: {m.supplier}</p>}
                     <p className="text-[10px] text-muted-foreground/70">Ver historial</p>
                   </button>
                   <div className="flex items-center gap-1 flex-shrink-0">
