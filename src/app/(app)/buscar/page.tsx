@@ -25,6 +25,7 @@ export default function BuscarPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [recents, setRecents] = useState<string[]>([])
+  const [typeFilter, setTypeFilter] = useState('todo')
 
   useEffect(() => {
     try {
@@ -95,6 +96,14 @@ export default function BuscarPage() {
 
   const hasQuery = term.trim().length >= 2
   const totalResults = jobs.length + clients.length + expenses.length + materials.length
+  const show = (t: string) => typeFilter === 'todo' || typeFilter === t
+  const TYPE_CHIPS: { value: string; label: string }[] = [
+    { value: 'todo', label: `Todo (${totalResults})` },
+    { value: 'trabajos', label: `Trabajos (${jobs.length})` },
+    { value: 'clientes', label: `Clientes (${clients.length})` },
+    { value: 'gastos', label: `Gastos (${expenses.length})` },
+    { value: 'materiales', label: `Materiales (${materials.length})` },
+  ]
 
   return (
     <div className="space-y-6 page-transition">
@@ -164,7 +173,21 @@ export default function BuscarPage() {
         </p>
       ) : (
         <div className="space-y-6">
-          {jobs.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {TYPE_CHIPS.map((c) => (
+              <button
+                key={c.value}
+                onClick={() => setTypeFilter(c.value)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap transition-colors ${
+                  typeFilter === c.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {show('trabajos') && jobs.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
                 <Briefcase className="h-4 w-4" />
@@ -196,7 +219,7 @@ export default function BuscarPage() {
             </section>
           )}
 
-          {clients.length > 0 && (
+          {show('clientes') && clients.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
                 <Users className="h-4 w-4" />
@@ -226,7 +249,7 @@ export default function BuscarPage() {
             </section>
           )}
 
-          {expenses.length > 0 && (
+          {show('gastos') && expenses.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
                 <Receipt className="h-4 w-4" />
@@ -252,7 +275,7 @@ export default function BuscarPage() {
             </section>
           )}
 
-          {materials.length > 0 && (
+          {show('materiales') && materials.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
                 <Package className="h-4 w-4" />
