@@ -436,6 +436,25 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Proyección del mes: lo cobrado + lo que falta por cobrar */}
+      {(stats?.pendingBalance || 0) > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Proyección</p>
+              <p className="text-xs text-muted-foreground">Si cobras todo lo pendiente</p>
+            </div>
+            <p className="text-xl font-bold text-money">
+              {formatCurrency((stats?.revenueThisMonth || 0) + (stats?.pendingBalance || 0))}
+            </p>
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+            <span>Cobrado: <span className="text-money font-medium">{formatCurrency(stats?.revenueThisMonth || 0)}</span></span>
+            <span>Por cobrar: <span className="text-pending font-medium">{formatCurrency(stats?.pendingBalance || 0)}</span></span>
+          </div>
+        </div>
+      )}
+
       {/* Income goal progress */}
       {incomeGoal > 0 && (
         <div className="rounded-xl border border-border bg-card p-4">
