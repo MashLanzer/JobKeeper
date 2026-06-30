@@ -9,13 +9,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ListSkeleton } from '@/components/shared/loading-skeleton'
 import {
   getRecurringExpenses,
   createRecurringExpense,
   deleteRecurringExpense,
   type RecurringExpense,
 } from '@/services/recurring-expenses'
-import { createExpense } from '@/services/expenses'
+import { createExpense, getExpenses } from '@/services/expenses'
 import { formatCurrency } from '@/lib/utils'
 import { EXPENSE_CATEGORIES } from '@/types'
 
@@ -72,8 +74,22 @@ export default function RecurrentesPage() {
     if (items.length === 0) return
     setRegistering(true)
     try {
-      const today = new Date().toISOString().slice(0, 10)
+      const now = new Date()
+      const y = now.getFullYear()
+      const m = now.getMonth() + 1
+      const from = `${y}-${String(m).padStart(2, '0')}-01`
+      const to = `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+      const today = now.toISOString().slice(0, 10)
+
+      // Evita duplicados: salta los gastos fijos ya registrados este mes.
+      const existing = await getExpenses({ from, to }).catch(() => [])
+      const already = new Set(
+        existing.filter((e) => (e.notes || '') === 'Gasto fijo').map((e) => e.description.toLowerCase())
+      )
+
+      let added = 0
       for (const it of items) {
+        if (already.has(it.description.toLowerCase())) continue
         await createExpense({
           description: it.description,
           amount: Number(it.amount),
@@ -82,8 +98,14 @@ export default function RecurrentesPage() {
           job_id: null as unknown as undefined,
           notes: 'Gasto fijo',
         })
+        added++
       }
-      toast.success(`${items.length} gasto${items.length !== 1 ? 's' : ''} registrado${items.length !== 1 ? 's' : ''} este mes`)
+      const skipped = items.length - added
+      if (added === 0) {
+        toast.info('Ya estaban registrados este mes')
+      } else {
+        toast.success(`${added} registrado${added !== 1 ? 's' : ''}${skipped > 0 ? `, ${skipped} ya estaba${skipped !== 1 ? 'n' : ''}` : ''}`)
+      }
     } catch {
       toast.error('No se pudieron registrar')
     } finally {
@@ -115,9 +137,17 @@ export default function RecurrentesPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-sm font-semibold">{formatCurrency(Number(it.amount))}</span>
-                  <button onClick={() => handleDelete(it.id)} className="text-muted-foreground hover:text-destructive" aria-label="Eliminar">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <ConfirmDialog
+                    title="¿Eliminar gasto fijo?"
+                    description={`Se quitará "${it.description}" de tus gastos fijos.`}
+                    confirmLabel="Eliminar"
+                    onConfirm={() => handleDelete(it.id)}
+                    trigger={
+                      <button className="text-muted-foreground hover:text-destructive" aria-label="Eliminar">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    }
+                  />
                 </div>
               </div>
             ))}
@@ -125,10 +155,19 @@ export default function RecurrentesPage() {
               <span>Total mensual</span>
               <span>{formatCurrency(total)}</span>
             </div>
-            <Button onClick={registerThisMonth} disabled={registering} className="w-full">
-              <CalendarCheck className="h-4 w-4 mr-2" />
-              {registering ? 'Registrando...' : 'Registrar este mes'}
-            </Button>
+            <ConfirmDialog
+              title="¿Registrar gastos fijos de este mes?"
+              description={`Se agregarán ${items.length} gasto${items.length !== 1 ? 's' : ''} (${formatCurrency(total)}) a tus gastos del mes. Los que ya estén registrados se omiten.`}
+              confirmLabel="Registrar"
+              variant="default"
+              onConfirm={registerThisMonth}
+              trigger={
+                <Button disabled={registering} className="w-full">
+                  <CalendarCheck className="h-4 w-4 mr-2" />
+                  {registering ? 'Registrando...' : 'Registrar este mes'}
+                </Button>
+              }
+            />
           </CardContent>
         </Card>
       )}
@@ -170,7 +209,7 @@ export default function RecurrentesPage() {
         </CardContent>
       </Card>
 
-      {loading && <p className="text-sm text-muted-foreground text-center">Cargando...</p>}
+      {loading && <ListSkeleton count={2} />}
     </div>
   )
 }
