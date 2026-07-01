@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { MessageCircle, DollarSign, Phone, CheckCircle2, FileText } from 'lucide-react'
+import { MessageCircle, DollarSign, Phone, CheckCircle2, FileText, CalendarClock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/loading-skeleton'
@@ -12,6 +20,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { getJobs, updateJob } from '@/services/jobs'
 import { getPaymentsTotalForJobs, addPayment } from '@/services/payments'
 import { getSettings } from '@/services/settings'
+import { getPromises, setPromise, clearPromise } from '@/lib/payment-promises'
 import { haptic } from '@/lib/haptics'
 import { toast } from 'sonner'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
@@ -33,10 +42,14 @@ export default function CobranzaPage() {
   const [loading, setLoading] = useState(true)
   const [businessName, setBusinessName] = useState('')
   const [paymentInfo, setPaymentInfo] = useState('')
-  const [sort, setSort] = useState<'monto' | 'antiguedad'>('monto')
+  const [sort, setSort] = useState<'monto' | 'antiguedad' | 'promesa'>('monto')
   const [collectingId, setCollectingId] = useState<string | null>(null)
+  const [promises, setPromises] = useState<Record<string, string>>({})
+  const [promiseFor, setPromiseFor] = useState<Debtor | null>(null)
+  const [promiseDate, setPromiseDate] = useState('')
 
   useEffect(() => {
+    setPromises(getPromises())
     const load = async () => {
       try {
         const [jobs, settings] = await Promise.all([getJobs(), getSettings()])
@@ -64,9 +77,34 @@ export default function CobranzaPage() {
 
   const total = debtors.reduce((s, d) => s + d.pending, 0)
 
-  const sortedDebtors = [...debtors].sort((a, b) =>
-    sort === 'antiguedad' ? daysSince(b.job) - daysSince(a.job) : b.pending - a.pending
-  )
+  const sortedDebtors = [...debtors].sort((a, b) => {
+    if (sort === 'antiguedad') return daysSince(b.job) - daysSince(a.job)
+    if (sort === 'promesa') {
+      const pa = promises[a.job.id]
+      const pb = promises[b.job.id]
+      if (pa && pb) return pa.localeCompare(pb)
+      if (pa) return -1
+      if (pb) return 1
+      return b.pending - a.pending
+    }
+    return b.pending - a.pending
+  })
+
+  const openPromise = (d: Debtor) => {
+    setPromiseFor(d)
+    setPromiseDate(promises[d.job.id] || '')
+  }
+
+  const savePromise = () => {
+    if (!promiseFor) return
+    const next = promiseDate
+      ? setPromise(promiseFor.job.id, promiseDate)
+      : clearPromise(promiseFor.job.id)
+    setPromises({ ...next })
+    haptic('light')
+    toast.success(promiseDate ? 'Promesa de pago guardada' : 'Promesa eliminada')
+    setPromiseFor(null)
+  }
 
   // Cobrar desde la lista: registra el saldo pendiente y fija paid_at.
   const handleCollect = async (d: Debtor) => {
@@ -78,6 +116,12 @@ export default function CobranzaPage() {
       await updateJob(d.job.id, { paid_at: new Date().toISOString() })
       haptic('success')
       toast.success('Trabajo cobrado')
+      clearPromise(d.job.id)
+      setPromises((prev) => {
+        const next = { ...prev }
+        delete next[d.job.id]
+        return next
+      })
       setDebtors((prev) => prev.filter((x) => x.job.id !== d.job.id))
     } catch {
       toast.error('No se pudo marcar como cobrado')
@@ -191,7 +235,7 @@ export default function CobranzaPage() {
           <div className="flex items-center justify-end gap-2">
             <span className="text-xs text-muted-foreground">Ordenar:</span>
             <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-              {(['monto', 'antiguedad'] as const).map((s) => (
+              {(['monto', 'antiguedad', 'promesa'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSort(s)}
@@ -200,7 +244,7 @@ export default function CobranzaPage() {
                     sort === s ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  {s === 'monto' ? 'Monto' : 'Más antiguo'}
+                  {s === 'monto' ? 'Monto' : s === 'antiguedad' ? 'Más antiguo' : 'Promesa'}
                 </button>
               ))}
             </div>
@@ -221,6 +265,9 @@ export default function CobranzaPage() {
           {sortedDebtors.map((d) => {
             const days = daysSince(d.job)
             const collected = Number(d.job.price) - d.pending
+            const promise = promises[d.job.id]
+            const todayKey = new Date().toISOString().slice(0, 10)
+            const promiseOverdue = promise ? promise < todayKey : false
             return (
             <Card key={d.job.id}>
               <CardContent className="p-4">
@@ -242,6 +289,20 @@ export default function CobranzaPage() {
                     {formatCurrency(d.pending)}
                   </span>
                 </div>
+
+                {promise && (
+                  <div
+                    className={cn(
+                      'mt-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
+                      promiseOverdue
+                        ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                        : 'bg-primary/10 text-primary'
+                    )}
+                  >
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    {promiseOverdue ? 'Prometió pagar el' : 'Promesa de pago'} {formatDate(promise)}
+                  </div>
+                )}
 
                 <div className="flex gap-2 mt-3">
                   <ConfirmDialog
@@ -269,6 +330,15 @@ export default function CobranzaPage() {
                       <Phone className="h-4 w-4" />
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openPromise(d)}
+                    aria-label="Promesa de pago"
+                    className={cn(promise && 'border-primary text-primary')}
+                  >
+                    <CalendarClock className="h-4 w-4" />
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => generateStatement(d)} aria-label="Estado de cuenta PDF">
                     <FileText className="h-4 w-4" />
                   </Button>
@@ -279,6 +349,47 @@ export default function CobranzaPage() {
           })}
         </div>
       )}
+
+      <Dialog open={!!promiseFor} onOpenChange={(o) => !o && setPromiseFor(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Promesa de pago</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {promiseFor?.job.client?.name || 'Cliente'} · saldo{' '}
+              {promiseFor ? formatCurrency(promiseFor.pending) : ''}
+            </p>
+            <Input
+              type="date"
+              value={promiseDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setPromiseDate(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            {promiseFor && promises[promiseFor.job.id] && (
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => {
+                  setPromiseDate('')
+                  const next = clearPromise(promiseFor.job.id)
+                  setPromises({ ...next })
+                  haptic('light')
+                  toast.success('Promesa eliminada')
+                  setPromiseFor(null)
+                }}
+              >
+                Quitar
+              </Button>
+            )}
+            <Button onClick={savePromise} disabled={!promiseDate}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
