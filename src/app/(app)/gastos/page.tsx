@@ -31,6 +31,7 @@ export default function GastosPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<'fecha' | 'monto'>('fecha')
 
   const from = `${year}-${String(month).padStart(2, '0')}-01`
   const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`
@@ -49,9 +50,23 @@ export default function GastosPage() {
     if (month === 12) { setYear((y) => y + 1); setMonth(1) } else setMonth((m) => m + 1)
   }
 
-  const visibleExpenses = search.trim()
-    ? expenses.filter((e) => e.description.toLowerCase().includes(search.trim().toLowerCase()))
-    : expenses
+  const term = search.trim().toLowerCase()
+  const visibleExpenses = (
+    term
+      ? expenses.filter(
+          (e) =>
+            e.description.toLowerCase().includes(term) ||
+            e.category.toLowerCase().includes(term) ||
+            (e.notes || '').toLowerCase().includes(term)
+        )
+      : expenses
+  )
+    .slice()
+    .sort((a, b) =>
+      sort === 'monto'
+        ? Number(b.amount) - Number(a.amount)
+        : new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
 
   const totalAmount = visibleExpenses.reduce((sum, e) => sum + e.amount, 0)
 
@@ -197,20 +212,28 @@ export default function GastosPage() {
         />
       </div>
 
-      <Select
-        value={categoryFilter}
-        onValueChange={setCategoryFilter}
-      >
-        <SelectTrigger className="h-9">
-          <SelectValue placeholder="Todas las categorías" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todas las categorías</SelectItem>
-          {EXPENSE_CATEGORIES.map((c) => (
-            <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex gap-2">
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="h-9 flex-1">
+            <SelectValue placeholder="Todas las categorías" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las categorías</SelectItem>
+            {EXPENSE_CATEGORIES.map((c) => (
+              <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={(v) => setSort(v as 'fecha' | 'monto')}>
+          <SelectTrigger className="h-9 w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="fecha">Recientes</SelectItem>
+            <SelectItem value="monto">Mayor monto</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {loading ? (
         <ListSkeleton count={4} />
