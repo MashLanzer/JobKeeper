@@ -13,8 +13,25 @@ import { getJobs } from '@/services/jobs'
 import { getClients } from '@/services/clients'
 import { getExpenses } from '@/services/expenses'
 import { getMaterials } from '@/services/materials'
-import { formatCurrency, getInitials } from '@/lib/utils'
+import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
 import type { Job, Client, Expense, Material } from '@/types'
+
+// Resalta las coincidencias del término dentro de un texto.
+function highlight(text: string, term: string) {
+  const q = term.trim()
+  if (!q) return text
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const parts = text.split(new RegExp(`(${escaped})`, 'ig'))
+  return parts.map((part, i) =>
+    part.toLowerCase() === q.toLowerCase() ? (
+      <mark key={i} className="bg-primary/20 text-foreground rounded px-0.5">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  )
+}
 
 export default function BuscarPage() {
   const router = useRouter()
@@ -200,7 +217,7 @@ export default function BuscarPage() {
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-medium truncate">{job.title}</h3>
+                            <h3 className="text-sm font-medium truncate">{highlight(job.title, term)}</h3>
                             <JobStatusBadge status={job.status} />
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -234,7 +251,7 @@ export default function BuscarPage() {
                           {getInitials(client.name)}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{client.name}</p>
+                          <p className="text-sm font-medium truncate">{highlight(client.name, term)}</p>
                           {(client.phone || client.email) && (
                             <p className="text-xs text-muted-foreground truncate">
                               {client.phone || client.email}
@@ -261,8 +278,10 @@ export default function BuscarPage() {
                     <Card className="hover:border-primary/50 transition-colors">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{expense.description}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{expense.category}</p>
+                          <p className="text-sm font-medium truncate">{highlight(expense.description, term)}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {expense.category}{expense.date ? ` · ${formatDate(expense.date)}` : ''}
+                          </p>
                         </div>
                         <span className="text-sm font-semibold text-destructive flex-shrink-0">
                           -{formatCurrency(expense.amount)}
@@ -287,7 +306,7 @@ export default function BuscarPage() {
                     <Card className="hover:border-primary/50 transition-colors">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{m.name}</p>
+                          <p className="text-sm font-medium truncate">{highlight(m.name, term)}</p>
                           <p className="text-xs text-muted-foreground">
                             Stock: {Number(m.stock)}{m.unit ? ` ${m.unit}` : ''}
                           </p>
