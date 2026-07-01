@@ -52,6 +52,9 @@ export default function CalculadoraPage() {
   const [shVal, setShVal] = useState('')
   const [scVal, setScVal] = useState('')
 
+  // CFM por tonelaje
+  const [cfmTons, setCfmTons] = useState('')
+
   // Valores por defecto del taller (se recuerdan entre sesiones).
   useEffect(() => {
     try {
@@ -87,6 +90,12 @@ export default function CalculadoraPage() {
 
   const btuNum = Number(btuInput) || 0
   const tons = btuNum / 12000
+
+  // CFM (flujo de aire) por tonelaje. Regla general 400 CFM/ton (350–450).
+  const cfmTonsNum = Number(cfmTons) || 0
+  const cfmNominal = Math.round(cfmTonsNum * 400)
+  const cfmLow = Math.round(cfmTonsNum * 350)
+  const cfmHigh = Math.round(cfmTonsNum * 450)
 
   // Delta T: retorno − suministro (°F). Normal entre 15 y 20.
   const dt = returnT !== '' && supplyT !== '' ? Number(returnT) - Number(supplyT) : null
@@ -342,6 +351,57 @@ export default function CalculadoraPage() {
             </div>
           )}
           <p className="text-[11px] text-muted-foreground">1 tonelada = 12,000 BTU/h</p>
+        </CardContent>
+      </Card>
+
+      {/* CFM (flujo de aire) por tonelaje */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <AirVent className="h-4 w-4 text-primary" />
+            Flujo de aire (CFM) por tonelaje
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-end gap-2">
+            <div className="flex-1 space-y-1.5">
+              <Label className="text-xs">Toneladas</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="Ej: 3"
+                value={cfmTons}
+                onChange={(e) => setCfmTons(e.target.value)}
+              />
+            </div>
+            {recommendedTons > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-10"
+                onClick={() => setCfmTons(recommendedTons.toFixed(1))}
+              >
+                Usar {recommendedTons.toFixed(1)} ton
+              </Button>
+            )}
+          </div>
+          {cfmTonsNum > 0 && (
+            <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">CFM recomendado</span>
+                <span className="font-semibold">{cfmNominal.toLocaleString()} CFM</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Rango aceptable</span>
+                <span className="font-medium">{cfmLow.toLocaleString()}–{cfmHigh.toLocaleString()} CFM</span>
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Regla general: 400 CFM/ton (350–450 según humedad). Sirve para dimensionar manejadora y ductos.
+          </p>
         </CardContent>
       </Card>
 
