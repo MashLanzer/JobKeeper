@@ -134,7 +134,7 @@ export default function ClientesPage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 stagger-in">
           {filtered.map((client) => (
             <ClientCard key={client.id} client={client} />
           ))}

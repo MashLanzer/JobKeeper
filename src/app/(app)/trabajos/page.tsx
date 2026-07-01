@@ -158,7 +158,7 @@ export default function TrabajosPage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 stagger-in">
           {sortedJobs.map((job) => (
             <JobCard key={job.id} job={job} onMarkPaid={handleMarkPaid} />
           ))}

@@ -256,7 +256,7 @@ export default function GastosPage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 stagger-in">
           {visibleExpenses.map((expense) => (
             <ExpenseCard
               key={expense.id}

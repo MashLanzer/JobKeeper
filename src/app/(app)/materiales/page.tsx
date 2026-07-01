@@ -261,7 +261,7 @@ export default function MaterialesPage() {
           {lowOnly ? 'Ningún material con stock bajo' : 'Sin resultados'}
         </p>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 stagger-in">
           {filtered.map((m) => {
             const low = isLow(m)
             return (

@@ -272,7 +272,7 @@ export default function CobranzaPage() {
           description="No tienes trabajos con saldo pendiente"
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 stagger-in">
           {sortedDebtors.map((d) => {
             const days = daysSince(d.job)
             const collected = Number(d.job.price) - d.pending
