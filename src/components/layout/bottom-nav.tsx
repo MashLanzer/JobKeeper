@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { Home, Briefcase, Calendar, Users, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getAttentionSummary } from '@/lib/attention'
 
 const navItems = [
   { href: '/dashboard', label: 'Inicio', icon: Home },
@@ -15,6 +17,16 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname()
+  const [attention, setAttention] = useState(0)
+
+  // Refresca el contador al cambiar de pantalla (datos siempre al día).
+  useEffect(() => {
+    let active = true
+    getAttentionSummary()
+      .then((s) => { if (active) setAttention(s.count) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [pathname])
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-sm pb-safe">
@@ -33,10 +45,15 @@ export function BottomNav() {
               )}
             >
               <div className={cn(
-                'flex items-center justify-center w-12 h-8 rounded-xl transition-colors',
+                'relative flex items-center justify-center w-12 h-8 rounded-xl transition-colors',
                 isActive && 'bg-primary/10'
               )}>
                 <Icon className={cn('h-6 w-6 transition-transform', isActive && 'scale-110')} />
+                {href === '/mas' && attention > 0 && (
+                  <span className="absolute top-0.5 right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                    {attention}
+                  </span>
+                )}
               </div>
               <span className="text-xs font-medium leading-none">{label}</span>
             </Link>

@@ -24,10 +24,7 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { getPendingBalance, getFollowupsDue } from '@/services/jobs'
-import { getMaterials } from '@/services/materials'
-import { getClients } from '@/services/clients'
-import { hasMaintenance, maintenanceStatus } from '@/lib/maintenance'
+import { getAttentionSummary } from '@/lib/attention'
 import { formatCurrency } from '@/lib/utils'
 
 interface Tool {
@@ -61,24 +58,14 @@ export default function MasPage() {
   const [editing, setEditing] = useState(false)
 
   useEffect(() => {
-    getPendingBalance().then(setPending).catch(() => {})
-    getMaterials()
-      .then((ms) =>
-        setLowCount(ms.filter((m) => Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0).length)
-      )
+    getAttentionSummary()
+      .then((s) => {
+        setPending(s.pending)
+        setLowCount(s.lowCount)
+        setMaintDue(s.maintDue)
+        setFollowupCount(s.followupCount)
+      })
       .catch(() => {})
-    getClients()
-      .then((cs) =>
-        setMaintDue(
-          cs.filter(
-            (c) =>
-              hasMaintenance(c) &&
-              maintenanceStatus(c.last_service_date as string, c.maintenance_months as number) === 'due'
-          ).length
-        )
-      )
-      .catch(() => {})
-    getFollowupsDue().then((f) => setFollowupCount(f.length)).catch(() => {})
     // Orden/visibilidad guardados localmente.
     try {
       const saved = JSON.parse(localStorage.getItem('mas_order') || 'null')
