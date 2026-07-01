@@ -21,6 +21,7 @@ import { getJobs, updateJob } from '@/services/jobs'
 import { getPaymentsTotalForJobs, addPayment } from '@/services/payments'
 import { getSettings } from '@/services/settings'
 import { getPromises, setPromise, clearPromise } from '@/lib/payment-promises'
+import { getCobroTemplate, renderTemplate } from '@/lib/message-templates'
 import { haptic } from '@/lib/haptics'
 import { toast } from 'sonner'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
@@ -206,10 +207,14 @@ export default function CobranzaPage() {
 
   const remindWhatsApp = (d: Debtor) => {
     const phone = (d.job.client?.phone || '').replace(/[^\d+]/g, '')
-    const name = d.job.client?.name || ''
-    const from = businessName ? ` de ${businessName}` : ''
     const pay = paymentInfo ? `\n\nPuedes pagar por: ${paymentInfo}` : ''
-    const msg = `Hola ${name}, te escribo${from} para recordarte el saldo pendiente de ${formatCurrency(d.pending)} por "${d.job.title}".${pay}\n\n¡Gracias!`
+    const msg = renderTemplate(getCobroTemplate(), {
+      cliente: d.job.client?.name || '',
+      negocio: businessName || '',
+      monto: formatCurrency(d.pending),
+      trabajo: d.job.title,
+      pago: pay,
+    })
     const url = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
       : `https://wa.me/?text=${encodeURIComponent(msg)}`

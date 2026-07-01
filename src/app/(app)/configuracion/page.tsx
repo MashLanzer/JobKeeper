@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2, Download, Lock, Bell } from 'lucide-react'
+import { LogOut, Moon, Sun, User, Mail, Palette, Info, Target, Building2, Download, Lock, Bell, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +27,13 @@ import { ensurePermission, syncAllReminders, sendTestReminder } from '@/lib/loca
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  getCobroTemplate,
+  setCobroTemplate,
+  DEFAULT_COBRO,
+  COBRO_VARS,
+} from '@/lib/message-templates'
 
 export default function ConfiguracionPage() {
   const { user, signOut } = useAuth()
@@ -145,6 +152,8 @@ export default function ConfiguracionPage() {
   const [remindersOn, setRemindersOn] = useState(true)
   const [reminderLead, setReminderLead] = useState('1d')
   const [accent, setAccentState] = useState('indigo')
+  const [cobroTpl, setCobroTpl] = useState(DEFAULT_COBRO)
+  const [savedCobroTpl, setSavedCobroTpl] = useState(DEFAULT_COBRO)
 
   useEffect(() => {
     setHasPin(!!getPin())
@@ -153,7 +162,16 @@ export default function ConfiguracionPage() {
     setRemindersOn(localStorage.getItem('reminders_enabled') !== '0')
     setReminderLead(localStorage.getItem('reminder_lead') || '1d')
     setAccentState(getAccent())
+    const tpl = getCobroTemplate()
+    setCobroTpl(tpl)
+    setSavedCobroTpl(tpl)
   }, [])
+
+  const handleSaveCobroTpl = () => {
+    setCobroTemplate(cobroTpl)
+    setSavedCobroTpl(cobroTpl.trim() || DEFAULT_COBRO)
+    toast.success('Plantilla guardada')
+  }
 
   const handleToggleReminders = async (v: boolean) => {
     setRemindersOn(v)
@@ -528,6 +546,58 @@ export default function ConfiguracionPage() {
         </CardContent>
       </Card>
 
+      {/* WhatsApp message template */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Mensaje de cobro (WhatsApp)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Personaliza el mensaje que se envía desde Cobranza. Usa estas variables:
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {COBRO_VARS.map((v) => (
+              <button
+                key={v.token}
+                type="button"
+                onClick={() => setCobroTpl((t) => `${t}${v.token}`)}
+                title={v.desc}
+                className="text-[11px] font-mono px-2 py-1 rounded-md bg-muted text-foreground hover:bg-muted/70 transition-colors"
+              >
+                {v.token}
+              </button>
+            ))}
+          </div>
+          <Textarea
+            value={cobroTpl}
+            onChange={(e) => setCobroTpl(e.target.value)}
+            rows={5}
+            className="text-sm"
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSaveCobroTpl}
+              size="sm"
+              className="flex-1"
+              disabled={cobroTpl.trim() === savedCobroTpl.trim()}
+            >
+              {cobroTpl.trim() === savedCobroTpl.trim() ? 'Guardado' : 'Guardar plantilla'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => setCobroTpl(DEFAULT_COBRO)}
+            >
+              Restaurar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Receipt PDF options */}
       <Card>
         <CardHeader className="pb-3">
@@ -616,7 +686,7 @@ export default function ConfiguracionPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Versión</span>
-            <span className="font-medium">1.0.0</span>
+            <span className="font-medium">0.2.0</span>
           </div>
           <Button
             variant="outline"
