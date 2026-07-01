@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calculator, AirVent, ArrowRightLeft, Thermometer, Plus, DollarSign } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -10,13 +10,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 import { cn, formatCurrency } from '@/lib/utils'
 
-const BTU_PER_FT2 = 25 // estimación para clima cálido (residencial)
+const DEFAULT_BTU_PER_FT2 = 25 // estimación para clima cálido (residencial)
+const PREFS_KEY = 'calc_prefs'
 
 export default function CalculadoraPage() {
   const router = useRouter()
   const [area, setArea] = useState('')
   const [unit, setUnit] = useState<'ft2' | 'm2'>('ft2')
   const [btuInput, setBtuInput] = useState('')
+  const [btuPerFt2, setBtuPerFt2] = useState(String(DEFAULT_BTU_PER_FT2))
 
   // Ajustes de carga
   const [sunny, setSunny] = useState(false)
@@ -50,9 +52,31 @@ export default function CalculadoraPage() {
   const [shVal, setShVal] = useState('')
   const [scVal, setScVal] = useState('')
 
+  // Valores por defecto del taller (se recuerdan entre sesiones).
+  useEffect(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')
+      if (p.btuPerFt2) setBtuPerFt2(String(p.btuPerFt2))
+      if (p.margin) setMargin(String(p.margin))
+      if (p.ozPerFt) setOzPerFt(String(p.ozPerFt))
+      if (p.precharge) setPrecharge(String(p.precharge))
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ btuPerFt2, margin, ozPerFt, precharge }))
+    } catch {
+      /* ignore */
+    }
+  }, [btuPerFt2, margin, ozPerFt, precharge])
+
   const areaNum = Number(area) || 0
   const areaFt2 = unit === 'ft2' ? areaNum : areaNum * 10.7639
-  let btu = areaFt2 * BTU_PER_FT2
+  const btuFactor = Number(btuPerFt2) || DEFAULT_BTU_PER_FT2
+  let btu = areaFt2 * btuFactor
   if (sunny) btu *= 1.1
   if (highCeiling) btu *= 1.1
   if (kitchen) btu += 4000
@@ -198,16 +222,29 @@ export default function CalculadoraPage() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 pt-1">
-              <Label className="text-xs whitespace-nowrap">Personas (habitual)</Label>
-              <Input
-                type="number"
-                min="0"
-                placeholder="2"
-                value={people}
-                onChange={(e) => setPeople(e.target.value)}
-                className="h-8 w-20"
-              />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs whitespace-nowrap">Personas (habitual)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="2"
+                  value={people}
+                  onChange={(e) => setPeople(e.target.value)}
+                  className="h-8 w-20"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs whitespace-nowrap">BTU / ft²</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={btuPerFt2}
+                  onChange={(e) => setBtuPerFt2(e.target.value)}
+                  className="h-8 w-20"
+                />
+              </div>
             </div>
           </div>
 
@@ -222,7 +259,7 @@ export default function CalculadoraPage() {
                 <span className="font-semibold">{recommendedTons.toFixed(1)} ton</span>
               </div>
               <p className="text-[11px] text-muted-foreground pt-1">
-                Estimación general ({BTU_PER_FT2} BTU/ft² + ajustes). Verifica con cálculo de carga térmica.
+                Estimación general ({btuFactor} BTU/ft² + ajustes). Verifica con cálculo de carga térmica.
               </p>
               <Button size="sm" variant="outline" className="w-full mt-2" onClick={createInstallJob}>
                 <Plus className="h-4 w-4 mr-1.5" />
