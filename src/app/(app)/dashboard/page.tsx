@@ -304,7 +304,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-4">
             {todayJobs.map((job) => (
               <Link key={job.id} href={`/trabajos/${job.id}`} className="block">
-                <Card className="hover:border-primary/50 transition-colors">
+                <Card className="hover:border-primary/50 transition-colors active:scale-[0.99]">
                   <CardContent className="p-3 flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

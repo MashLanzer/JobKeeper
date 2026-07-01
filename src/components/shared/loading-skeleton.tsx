@@ -15,7 +15,7 @@ export function CardSkeleton() {
 
 export function ListSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 stagger-in">
       {Array.from({ length: count }).map((_, i) => (
         <CardSkeleton key={i} />
       ))}

@@ -213,7 +213,7 @@ export default function BuscarPage() {
               <div className="space-y-4">
                 {jobs.map((job) => (
                   <Link key={job.id} href={`/trabajos/${job.id}`} className="block" onClick={() => rememberSearch(term)}>
-                    <Card className="hover:border-primary/50 transition-colors">
+                    <Card className="hover:border-primary/50 transition-colors active:scale-[0.99]">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
@@ -245,7 +245,7 @@ export default function BuscarPage() {
               <div className="space-y-4">
                 {clients.map((client) => (
                   <Link key={client.id} href={`/clientes/${client.id}`} className="block" onClick={() => rememberSearch(term)}>
-                    <Card className="hover:border-primary/50 transition-colors">
+                    <Card className="hover:border-primary/50 transition-colors active:scale-[0.99]">
                       <CardContent className="p-3 flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold flex-shrink-0">
                           {getInitials(client.name)}
@@ -275,7 +275,7 @@ export default function BuscarPage() {
               <div className="space-y-4">
                 {expenses.map((expense) => (
                   <Link key={expense.id} href="/gastos" className="block" onClick={() => rememberSearch(term)}>
-                    <Card className="hover:border-primary/50 transition-colors">
+                    <Card className="hover:border-primary/50 transition-colors active:scale-[0.99]">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{highlight(expense.description, term)}</p>
@@ -303,7 +303,7 @@ export default function BuscarPage() {
               <div className="space-y-4">
                 {materials.map((m) => (
                   <Link key={m.id} href="/materiales" className="block" onClick={() => rememberSearch(term)}>
-                    <Card className="hover:border-primary/50 transition-colors">
+                    <Card className="hover:border-primary/50 transition-colors active:scale-[0.99]">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{highlight(m.name, term)}</p>
