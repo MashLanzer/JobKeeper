@@ -12,7 +12,8 @@ import { getJobsByMonth } from '@/services/jobs'
 import { getExpensesByMonth, getFinanceSummary } from '@/services/expenses'
 import { getYearReport, getBusinessStats, type BusinessStats } from '@/services/reports'
 import { getSettings, businessNameOf } from '@/services/settings'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { categoryStyle } from '@/lib/categories'
+import { formatCurrency, formatDate, cn } from '@/lib/utils'
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -29,6 +30,7 @@ export default function ReportesPage() {
   const [businessName, setBusinessName] = useState('WorkLedger')
   const [stats, setStats] = useState<BusinessStats | null>(null)
   const [monthSummary, setMonthSummary] = useState<{ totalIncome: number; totalExpenses: number; netProfit: number } | null>(null)
+  const [catIncome, setCatIncome] = useState<{ category: string; total: number; count: number }[]>([])
   const [taxRate, setTaxRate] = useState('0')
 
   const atCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
@@ -41,6 +43,25 @@ export default function ReportesPage() {
 
   useEffect(() => {
     getFinanceSummary(year, month).then(setMonthSummary).catch(() => setMonthSummary(null))
+    // Ingresos por categoría del mes (solo trabajos cobrados).
+    getJobsByMonth(year, month)
+      .then((jobs) => {
+        const map = new Map<string, { total: number; count: number }>()
+        for (const j of jobs) {
+          if (!j.paid_at) continue
+          const cat = j.category || 'General/Varios'
+          const cur = map.get(cat) || { total: 0, count: 0 }
+          cur.total += Number(j.price)
+          cur.count += 1
+          map.set(cat, cur)
+        }
+        setCatIncome(
+          Array.from(map.entries())
+            .map(([category, v]) => ({ category, ...v }))
+            .sort((a, b) => b.total - a.total)
+        )
+      })
+      .catch(() => setCatIncome([]))
   }, [year, month])
 
   const handleTaxRate = (v: string) => {
@@ -445,6 +466,44 @@ export default function ReportesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Ingresos por categoría del mes */}
+      {catIncome.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Ingresos por categoría</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(() => {
+              const max = catIncome[0]?.total || 1
+              const total = catIncome.reduce((s, c) => s + c.total, 0)
+              return catIncome.map((c) => (
+                <div key={c.category} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className={cn('h-2.5 w-2.5 rounded-full flex-shrink-0', categoryStyle(c.category).dot)} />
+                      <span className="truncate">{c.category}</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        · {c.count} trabajo{c.count !== 1 ? 's' : ''}
+                      </span>
+                    </span>
+                    <span className="font-semibold text-money flex-shrink-0">{formatCurrency(c.total)}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full', categoryStyle(c.category).dot)}
+                      style={{ width: `${Math.max(4, (c.total / max) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-right">
+                    {total > 0 ? Math.round((c.total / total) * 100) : 0}% del mes
+                  </p>
+                </div>
+              ))
+            })()}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Advanced stats */}
       {stats && stats.completedCount > 0 && (
