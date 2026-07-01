@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/shared/page-header'
 import { getJobsByMonth } from '@/services/jobs'
 import { getExpensesByMonth, getFinanceSummary } from '@/services/expenses'
-import { getYearReport, getBusinessStats, type BusinessStats } from '@/services/reports'
+import { getYearReport, getBusinessStats, type BusinessStats, type MonthBreakdown } from '@/services/reports'
 import { getSettings, businessNameOf } from '@/services/settings'
 import { categoryStyle } from '@/lib/categories'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
@@ -33,6 +33,7 @@ export default function ReportesPage() {
   const [catIncome, setCatIncome] = useState<{ category: string; total: number; count: number }[]>([])
   const [expenseByJob, setExpenseByJob] = useState<{ title: string; total: number }[]>([])
   const [unassignedExpense, setUnassignedExpense] = useState(0)
+  const [yearMonths, setYearMonths] = useState<MonthBreakdown[]>([])
   const [taxRate, setTaxRate] = useState('0')
 
   const atCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
@@ -42,6 +43,10 @@ export default function ReportesPage() {
     getBusinessStats().then(setStats).catch(() => {})
     try { setTaxRate(localStorage.getItem('tax_rate_pref') || '0') } catch { /* ignore */ }
   }, [])
+
+  useEffect(() => {
+    getYearReport(year).then((r) => setYearMonths(r.months)).catch(() => setYearMonths([]))
+  }, [year])
 
   useEffect(() => {
     getFinanceSummary(year, month).then(setMonthSummary).catch(() => setMonthSummary(null))
@@ -94,6 +99,19 @@ export default function ReportesPage() {
 
   const net = monthSummary?.netProfit || 0
   const taxEstimate = net > 0 ? net * ((Number(taxRate) || 0) / 100) : 0
+
+  // Comparativa por trimestre del año seleccionado.
+  const quarters = [0, 1, 2, 3].map((q) => {
+    const ms = yearMonths.filter((m) => Math.floor((m.month - 1) / 3) === q)
+    return {
+      q: q + 1,
+      income: ms.reduce((s, m) => s + m.income, 0),
+      expenses: ms.reduce((s, m) => s + m.expenses, 0),
+      net: ms.reduce((s, m) => s + m.net, 0),
+    }
+  })
+  const maxQuarterIncome = Math.max(...quarters.map((x) => x.income), 1)
+  const yearHasData = quarters.some((x) => x.income > 0 || x.expenses > 0)
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -524,6 +542,39 @@ export default function ReportesPage() {
                 </div>
               ))
             })()}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Comparativa trimestral */}
+      {yearHasData && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Comparativa trimestral {year}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {quarters.map((q) => (
+              <div key={q.q} className="space-y-1">
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="font-medium">T{q.q}</span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-money">{formatCurrency(q.income)}</span>
+                    <span className={`font-semibold ${q.net >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                      {formatCurrency(q.net)} neto
+                    </span>
+                  </span>
+                </div>
+                <div className="flex h-1.5 rounded-full overflow-hidden bg-muted">
+                  <div
+                    className="h-full bg-green-500/60"
+                    style={{ width: `${(q.income / maxQuarterIncome) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+            <p className="text-[10px] text-muted-foreground pt-1">
+              Barras = ingresos por trimestre (relativo al trimestre más alto).
+            </p>
           </CardContent>
         </Card>
       )}
