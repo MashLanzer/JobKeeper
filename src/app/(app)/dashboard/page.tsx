@@ -295,6 +295,29 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">trabajos completados</p>
             </div>
           </div>
+          {incomeGoal > 0 && (() => {
+            const weeklyGoal = Math.round(incomeGoal / 4.33)
+            const pct = Math.min(100, (weekStats.income / weeklyGoal) * 100)
+            return (
+              <div className="mt-3 pt-3 border-t border-border">
+                <div className="flex justify-between items-center mb-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Meta semanal</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(weekStats.income)} / {formatCurrency(weeklyGoal)}
+                  </p>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: weekStats.income >= weeklyGoal ? '#22c55e' : 'hsl(var(--primary))',
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
