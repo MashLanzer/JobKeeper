@@ -17,12 +17,17 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  ChevronRight,
+  Wrench,
+  PhoneCall,
   type LucideIcon,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { getPendingBalance } from '@/services/jobs'
+import { getPendingBalance, getFollowupsDue } from '@/services/jobs'
 import { getMaterials } from '@/services/materials'
+import { getClients } from '@/services/clients'
+import { hasMaintenance, maintenanceStatus } from '@/lib/maintenance'
 import { formatCurrency } from '@/lib/utils'
 
 interface Tool {
@@ -50,6 +55,8 @@ const toolByHref: Record<string, Tool> = Object.fromEntries(tools.map((t) => [t.
 export default function MasPage() {
   const [pending, setPending] = useState(0)
   const [lowCount, setLowCount] = useState(0)
+  const [maintDue, setMaintDue] = useState(0)
+  const [followupCount, setFollowupCount] = useState(0)
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER)
   const [editing, setEditing] = useState(false)
 
@@ -60,6 +67,18 @@ export default function MasPage() {
         setLowCount(ms.filter((m) => Number(m.stock) <= Number(m.min_stock) && Number(m.min_stock) > 0).length)
       )
       .catch(() => {})
+    getClients()
+      .then((cs) =>
+        setMaintDue(
+          cs.filter(
+            (c) =>
+              hasMaintenance(c) &&
+              maintenanceStatus(c.last_service_date as string, c.maintenance_months as number) === 'due'
+          ).length
+        )
+      )
+      .catch(() => {})
+    getFollowupsDue().then((f) => setFollowupCount(f.length)).catch(() => {})
     // Orden/visibilidad guardados localmente.
     try {
       const saved = JSON.parse(localStorage.getItem('mas_order') || 'null')
@@ -91,6 +110,42 @@ export default function MasPage() {
     return null
   }
 
+  // Resumen "necesita atención": lo accionable de un vistazo.
+  const alerts = [
+    pending > 0 && {
+      href: '/cobranza',
+      icon: Wallet,
+      label: 'Por cobrar',
+      value: formatCurrency(pending),
+      color: 'text-amber-600 dark:text-amber-400',
+      bg: 'bg-amber-500/10',
+    },
+    maintDue > 0 && {
+      href: '/dashboard',
+      icon: Wrench,
+      label: `Mantenimiento${maintDue !== 1 ? 's' : ''} vencido${maintDue !== 1 ? 's' : ''}`,
+      value: String(maintDue),
+      color: 'text-rose-600 dark:text-rose-400',
+      bg: 'bg-rose-500/10',
+    },
+    followupCount > 0 && {
+      href: '/dashboard',
+      icon: PhoneCall,
+      label: `Seguimiento${followupCount !== 1 ? 's' : ''} pendiente${followupCount !== 1 ? 's' : ''}`,
+      value: String(followupCount),
+      color: 'text-blue-600 dark:text-blue-400',
+      bg: 'bg-blue-500/10',
+    },
+    lowCount > 0 && {
+      href: '/materiales',
+      icon: Package,
+      label: `Material${lowCount !== 1 ? 'es' : ''} bajo${lowCount !== 1 ? 's' : ''}`,
+      value: String(lowCount),
+      color: 'text-violet-600 dark:text-violet-400',
+      bg: 'bg-violet-500/10',
+    },
+  ].filter(Boolean) as { href: string; icon: LucideIcon; label: string; value: string; color: string; bg: string }[]
+
   return (
     <div className="space-y-6 page-transition">
       <div className="flex items-center justify-between">
@@ -99,6 +154,31 @@ export default function MasPage() {
           {editing ? <><Check className="h-4 w-4 mr-1.5" /> Listo</> : <><Pencil className="h-4 w-4 mr-1.5" /> Editar</>}
         </Button>
       </div>
+
+      {!editing && alerts.length > 0 && (
+        <Card className="p-3">
+          <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">Necesita atención</p>
+          <div className="flex flex-col">
+            {alerts.map((a, i) => {
+              const Icon = a.icon
+              return (
+                <Link
+                  key={`${a.href}-${i}`}
+                  href={a.href}
+                  className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-muted/50 transition-colors active:scale-[0.99]"
+                >
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${a.bg}`}>
+                    <Icon className={`h-4 w-4 ${a.color}`} />
+                  </div>
+                  <span className="flex-1 text-sm font-medium">{a.label}</span>
+                  <span className={`text-sm font-bold ${a.color}`}>{a.value}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {editing ? (
         <div className="space-y-4">
