@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCardSkeleton } from '@/components/shared/loading-skeleton'
 import { getFinanceSummary, getExpensesByMonth } from '@/services/expenses'
-import { getPaidJobsByMonth, getIncomeTrend } from '@/services/jobs'
+import { getPaidJobsByMonth, getIncomeTrend, getJobsByMonth } from '@/services/jobs'
+import { getPaymentsTotalForJobs } from '@/services/payments'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -86,6 +87,7 @@ export default function FinanzasPage() {
   const [prevSummary, setPrevSummary] = useState<FinanceSummary | null>(null)
   const [recentJobs, setRecentJobs] = useState<any[]>([])
   const [incomeTrend, setIncomeTrend] = useState<MonthlyIncome[]>([])
+  const [cashFlow, setCashFlow] = useState<{ billed: number; collected: number; pending: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -106,6 +108,21 @@ export default function FinanzasPage() {
         setPrevSummary(prevFin)
         // Lo cobrado del mes: coincide con el total de "Ingresos".
         setRecentJobs(jobs)
+
+        // Flujo de caja del mes: facturado vs cobrado vs por cobrar.
+        try {
+          const monthJobs = await getJobsByMonth(year, month)
+          const active = monthJobs.filter((j) => j.status !== 'cancelado')
+          const payMap = await getPaymentsTotalForJobs(active.map((j) => j.id))
+          const billed = active.reduce((s, j) => s + Number(j.price), 0)
+          const collected = active.reduce(
+            (s, j) => s + Number(j.deposit) + (payMap[j.id] || 0),
+            0
+          )
+          setCashFlow({ billed, collected, pending: Math.max(0, billed - collected) })
+        } catch {
+          setCashFlow(null)
+        }
       } catch (err) {
         console.error(err)
       } finally {
@@ -268,6 +285,49 @@ export default function FinanzasPage() {
                   selected={{ year, month }}
                   onSelect={(y, m) => { setYear(y); setMonth(m) }}
                 />
+              </CardContent>
+            </Card>
+          )}
+
+          {cashFlow && cashFlow.billed > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Flujo de caja del mes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
+                  <div
+                    className="h-full bg-green-500"
+                    style={{ width: `${(cashFlow.collected / cashFlow.billed) * 100}%` }}
+                  />
+                  <div
+                    className="h-full bg-amber-500"
+                    style={{ width: `${(cashFlow.pending / cashFlow.billed) * 100}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Facturado</span>
+                  <span className="font-semibold">{formatCurrency(cashFlow.billed)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Cobrado
+                  </span>
+                  <span className="font-medium text-money">{formatCurrency(cashFlow.collected)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Por cobrar
+                  </span>
+                  <span className="font-medium text-pending">{formatCurrency(cashFlow.pending)}</span>
+                </div>
+                {cashFlow.pending > 0 && (
+                  <Link href="/cobranza" className="block">
+                    <Button variant="outline" size="sm" className="w-full">
+                      Ver cobranza
+                    </Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}
