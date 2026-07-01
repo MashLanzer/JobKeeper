@@ -15,15 +15,29 @@ const navItems = [
   { href: '/mas', label: 'Más', icon: LayoutGrid },
 ]
 
+// Caché a nivel de módulo para no consultar en cada navegación.
+let cachedCount = 0
+let lastFetch = 0
+const TTL = 60_000 // 1 min
+
 export function BottomNav() {
   const pathname = usePathname()
-  const [attention, setAttention] = useState(0)
+  const [attention, setAttention] = useState(cachedCount)
 
-  // Refresca el contador al cambiar de pantalla (datos siempre al día).
+  // Refresca el contador al navegar, pero como mucho una vez por minuto.
   useEffect(() => {
+    if (Date.now() - lastFetch < TTL) {
+      setAttention(cachedCount)
+      return
+    }
     let active = true
+    lastFetch = Date.now()
     getAttentionSummary()
-      .then((s) => { if (active) setAttention(s.count) })
+      .then((s) => {
+        cachedCount = s.count
+        lastFetch = Date.now()
+        if (active) setAttention(s.count)
+      })
       .catch(() => {})
     return () => { active = false }
   }, [pathname])
