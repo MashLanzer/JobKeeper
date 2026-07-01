@@ -78,6 +78,12 @@ export default function CobranzaPage() {
 
   const total = debtors.reduce((s, d) => s + d.pending, 0)
 
+  // Fecha local de hoy en 'YYYY-MM-DD' (el input date usa fecha local, no UTC).
+  const todayKey = (() => {
+    const n = new Date()
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+  })()
+
   const sortedDebtors = [...debtors].sort((a, b) => {
     if (sort === 'antiguedad') return daysSince(b.job) - daysSince(a.job)
     if (sort === 'promesa') {
@@ -271,7 +277,6 @@ export default function CobranzaPage() {
             const days = daysSince(d.job)
             const collected = Number(d.job.price) - d.pending
             const promise = promises[d.job.id]
-            const todayKey = new Date().toISOString().slice(0, 10)
             const promiseOverdue = promise ? promise < todayKey : false
             return (
             <Card key={d.job.id}>
@@ -368,7 +373,7 @@ export default function CobranzaPage() {
             <Input
               type="date"
               value={promiseDate}
-              min={new Date().toISOString().slice(0, 10)}
+              min={todayKey}
               onChange={(e) => setPromiseDate(e.target.value)}
             />
           </div>
