@@ -63,6 +63,7 @@ export default function JobDetailPage() {
   const [, setTick] = useState(0) // fuerza re-render para el cronómetro en curso
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
+  const [newTask, setNewTask] = useState('')
   const [signature, setSignature] = useState<string | null>(null)
   const [settings, setSettings] = useState<BusinessSettings>({
     name: '', phone: '', email: '', logo: '', income_goal: 0, review_link: '', payment_info: '',
@@ -360,6 +361,33 @@ export default function JobDetailPage() {
     } catch {
       toast.error('No se pudo guardar el checklist')
     }
+  }
+
+  const persistChecklist = async (next: ChecklistItem[], prev: ChecklistItem[]) => {
+    setChecklist(next) // optimista
+    try {
+      await update({ checklist: next })
+    } catch {
+      setChecklist(prev)
+      toast.error('No se pudo guardar el checklist')
+    }
+  }
+
+  const addChecklistItem = async () => {
+    const label = newTask.trim()
+    if (!label) return
+    if (checklist.some((it) => it.label.toLowerCase() === label.toLowerCase())) {
+      toast.error('Esa tarea ya está en la lista')
+      return
+    }
+    haptic('light')
+    setNewTask('')
+    await persistChecklist([...checklist, { label, done: false }], checklist)
+  }
+
+  const removeChecklistItem = async (index: number) => {
+    haptic('light')
+    await persistChecklist(checklist.filter((_, i) => i !== index), checklist)
   }
 
   const handleGeneratePDF = async () => {
@@ -1429,23 +1457,62 @@ export default function JobDetailPage() {
               {checklist.filter((i) => i.done).length}/{checklist.length}
             </span>
           </div>
+          {checklist.length > 0 && (
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-3">
+              <div
+                className="h-full rounded-full bg-green-500 transition-all"
+                style={{ width: `${(checklist.filter((i) => i.done).length / checklist.length) * 100}%` }}
+              />
+            </div>
+          )}
           <div className="space-y-1">
             {checklist.map((item, i) => (
-              <button
+              <div
                 key={item.label}
-                onClick={() => toggleChecklistItem(i)}
-                className="flex items-center gap-3 w-full text-left py-2 rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-2 rounded-lg hover:bg-muted/50 transition-colors group"
               >
-                {item.done ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                ) : (
-                  <Circle className="h-5 w-5 text-muted-foreground/40 flex-shrink-0" />
-                )}
-                <span className={`text-sm ${item.done ? 'line-through text-muted-foreground' : ''}`}>
-                  {item.label}
-                </span>
-              </button>
+                <button
+                  onClick={() => toggleChecklistItem(i)}
+                  className="flex items-center gap-3 flex-1 text-left py-2 min-w-0"
+                >
+                  {item.done ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <Circle className="h-5 w-5 text-muted-foreground/40 flex-shrink-0" />
+                  )}
+                  <span className={`text-sm ${item.done ? 'line-through text-muted-foreground' : ''}`}>
+                    {item.label}
+                  </span>
+                </button>
+                <button
+                  onClick={() => removeChecklistItem(i)}
+                  className="p-1.5 text-muted-foreground/50 hover:text-destructive flex-shrink-0"
+                  aria-label="Quitar tarea"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             ))}
+            {checklist.length === 0 && (
+              <p className="text-xs text-muted-foreground py-2">Sin tareas. Agrega las que necesites.</p>
+            )}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Input
+              placeholder="Agregar tarea..."
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addChecklistItem()
+                }
+              }}
+              className="h-9"
+            />
+            <Button size="sm" variant="outline" onClick={addChecklistItem} disabled={!newTask.trim()} aria-label="Agregar tarea">
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         </CardContent>
       </Card>
