@@ -31,6 +31,8 @@ export default function ReportesPage() {
   const [stats, setStats] = useState<BusinessStats | null>(null)
   const [monthSummary, setMonthSummary] = useState<{ totalIncome: number; totalExpenses: number; netProfit: number } | null>(null)
   const [catIncome, setCatIncome] = useState<{ category: string; total: number; count: number }[]>([])
+  const [expenseByJob, setExpenseByJob] = useState<{ title: string; total: number }[]>([])
+  const [unassignedExpense, setUnassignedExpense] = useState(0)
   const [taxRate, setTaxRate] = useState('0')
 
   const atCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
@@ -62,6 +64,27 @@ export default function ReportesPage() {
         )
       })
       .catch(() => setCatIncome([]))
+    // Gastos agrupados por trabajo asignado.
+    getExpensesByMonth(year, month)
+      .then((exps) => {
+        const map = new Map<string, number>()
+        let unassigned = 0
+        for (const e of exps) {
+          const title = (e.job as { title?: string } | undefined)?.title
+          if (title) map.set(title, (map.get(title) || 0) + Number(e.amount))
+          else unassigned += Number(e.amount)
+        }
+        setExpenseByJob(
+          Array.from(map.entries())
+            .map(([title, total]) => ({ title, total }))
+            .sort((a, b) => b.total - a.total)
+        )
+        setUnassignedExpense(unassigned)
+      })
+      .catch(() => {
+        setExpenseByJob([])
+        setUnassignedExpense(0)
+      })
   }, [year, month])
 
   const handleTaxRate = (v: string) => {
@@ -501,6 +524,32 @@ export default function ReportesPage() {
                 </div>
               ))
             })()}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Gastos por trabajo */}
+      {(expenseByJob.length > 0 || unassignedExpense > 0) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Gastos por trabajo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {expenseByJob.map((e) => (
+              <div key={e.title} className="flex justify-between gap-2">
+                <span className="text-muted-foreground truncate">{e.title}</span>
+                <span className="font-medium text-destructive flex-shrink-0">-{formatCurrency(e.total)}</span>
+              </div>
+            ))}
+            {unassignedExpense > 0 && (
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground italic">Sin trabajo asignado</span>
+                <span className="font-medium text-muted-foreground flex-shrink-0">-{formatCurrency(unassignedExpense)}</span>
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground pt-1">
+              Asigna un trabajo al registrar un gasto para ver aquí cuánto costó cada uno.
+            </p>
           </CardContent>
         </Card>
       )}
