@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench, Navigation, CheckCircle2 } from 'lucide-react'
+import { DollarSign, Briefcase, Clock, TrendingDown, Plus, ListTodo, AlertCircle, CalendarDays, Wrench, Navigation, CheckCircle2, Users, Receipt, Wallet, Calculator, Search, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { UpcomingJobs } from '@/components/dashboard/upcoming-jobs'
 import { JobStatusBadge } from '@/components/jobs/job-status-badge'
@@ -31,6 +32,21 @@ interface Stats {
   pendingBalance: number
   completedUnpaid: number
 }
+
+// Catálogo de accesos rápidos que el usuario puede elegir para el inicio.
+const QUICK_ACTIONS: { id: string; label: string; href: string; icon: LucideIcon }[] = [
+  { id: 'nuevo_trabajo', label: 'Nuevo trabajo', href: '/trabajos/nuevo', icon: Plus },
+  { id: 'pendientes', label: 'Pendientes', href: '/trabajos?status=pendiente', icon: ListTodo },
+  { id: 'nuevo_cliente', label: 'Nuevo cliente', href: '/clientes/nuevo', icon: Users },
+  { id: 'nuevo_gasto', label: 'Nuevo gasto', href: '/gastos/nuevo', icon: Receipt },
+  { id: 'cobranza', label: 'Cobranza', href: '/cobranza', icon: Wallet },
+  { id: 'calculadora', label: 'Calculadora', href: '/calculadora', icon: Calculator },
+  { id: 'buscar', label: 'Buscar', href: '/buscar', icon: Search },
+  { id: 'calendario', label: 'Calendario', href: '/calendario', icon: CalendarDays },
+]
+const QUICK_BY_ID = Object.fromEntries(QUICK_ACTIONS.map((a) => [a.id, a]))
+const DEFAULT_QUICK = ['nuevo_trabajo', 'pendientes']
+const MAX_QUICK = 4
 
 function getGreeting(user: { email?: string | null; user_metadata?: Record<string, string> } | null) {
   const hour = new Date().getHours()
@@ -85,11 +101,31 @@ export default function DashboardPage() {
   const [weekStats, setWeekStats] = useState<{ income: number; count: number } | null>(null)
   const [dueMaintenance, setDueMaintenance] = useState<Client[]>([])
   const [followups, setFollowups] = useState<Job[]>([])
+  const [quickIds, setQuickIds] = useState<string[]>(DEFAULT_QUICK)
+  const [editQuick, setEditQuick] = useState(false)
 
   useEffect(() => {
     getFollowupsDue().then(setFollowups).catch(() => {})
     getWeekStats().then(setWeekStats).catch(() => {})
+    try {
+      const saved = JSON.parse(localStorage.getItem('dash_quick_actions') || 'null')
+      if (Array.isArray(saved) && saved.length) setQuickIds(saved.filter((id: string) => QUICK_BY_ID[id]))
+    } catch {
+      // ignore
+    }
   }, [])
+
+  const toggleQuick = (id: string) => {
+    setQuickIds((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : prev.length >= MAX_QUICK
+          ? prev
+          : [...prev, id]
+      try { localStorage.setItem('dash_quick_actions', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
 
   const markFollowupDone = async (jobId: string) => {
     const prev = followups
@@ -187,20 +223,68 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <Button asChild className="flex-1 h-11">
-          <Link href="/trabajos/nuevo">
-            <Plus className="h-4 w-4 mr-1.5" />
-            Nuevo trabajo
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="flex-1 h-11">
-          <Link href="/trabajos?status=pendiente">
-            <ListTodo className="h-4 w-4 mr-1.5" />
-            Pendientes
-          </Link>
-        </Button>
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          {(quickIds.length ? quickIds : DEFAULT_QUICK).map((id, i) => {
+            const a = QUICK_BY_ID[id]
+            if (!a) return null
+            const Icon = a.icon
+            return (
+              <Button
+                key={id}
+                asChild
+                variant={i === 0 ? 'default' : 'outline'}
+                className="h-11"
+              >
+                <Link href={a.href}>
+                  <Icon className="h-4 w-4 mr-1.5" />
+                  {a.label}
+                </Link>
+              </Button>
+            )
+          })}
+        </div>
+        <button
+          onClick={() => setEditQuick(true)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mx-auto"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Personalizar accesos
+        </button>
       </div>
+
+      <Dialog open={editQuick} onOpenChange={setEditQuick}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Accesos rápidos</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">Elige hasta {MAX_QUICK} accesos para el inicio.</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_ACTIONS.map((a) => {
+              const on = quickIds.includes(a.id)
+              const Icon = a.icon
+              const full = !on && quickIds.length >= MAX_QUICK
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => toggleQuick(a.id)}
+                  disabled={full}
+                  className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full transition-colors ${
+                    on
+                      ? 'bg-primary text-primary-foreground'
+                      : full
+                        ? 'bg-muted text-muted-foreground/40'
+                        : 'bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {a.label}
+                </button>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Today's agenda — lo más relevante del día, arriba del todo */}
       {todayJobs.length > 0 && (
