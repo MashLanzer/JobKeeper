@@ -541,6 +541,18 @@ export default function ClienteDetailPage() {
         const balance = totalBilled - totalCollected
         const completedCount = activeJobs.filter((j) => j.status === 'completado').length
         const avgTicket = activeJobs.length > 0 ? totalBilled / activeJobs.length : 0
+        // Antigüedad y último servicio (contexto de la relación).
+        const dateOf = (j: Job) => j.scheduled_at || j.created_at
+        const firstDate = activeJobs
+          .map(dateOf)
+          .filter(Boolean)
+          .sort()[0]
+        const lastServiceDate = activeJobs
+          .filter((j) => j.status === 'completado')
+          .map((j) => j.completed_at || dateOf(j))
+          .filter(Boolean)
+          .sort()
+          .slice(-1)[0]
         return (
           <Card>
             <CardHeader className="pb-2">
@@ -555,6 +567,18 @@ export default function ClienteDetailPage() {
                 <span className="text-muted-foreground">Ticket promedio</span>
                 <span className="font-medium">{formatCurrency(avgTicket)}</span>
               </div>
+              {firstDate && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cliente desde</span>
+                  <span className="font-medium">{formatDate(firstDate)}</span>
+                </div>
+              )}
+              {lastServiceDate && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Último servicio</span>
+                  <span className="font-medium">{formatDate(lastServiceDate)}</span>
+                </div>
+              )}
               <div className="h-px bg-border" />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total facturado (de por vida)</span>
