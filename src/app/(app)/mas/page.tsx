@@ -221,7 +221,7 @@ export default function MasPage() {
               <Link key={href} href={href} className="block">
                 <Card className="relative hover:border-primary/50 transition-colors active:scale-[0.97]">
                   {badge && (
-                    <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold leading-none px-1.5 py-1 rounded-full bg-amber-500 text-white max-w-[80%] truncate">
+                    <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold leading-none px-1.5 py-1 rounded-full bg-amber-500 text-white max-w-[80%] truncate badge-pop">
                       {badge}
                     </span>
                   )}

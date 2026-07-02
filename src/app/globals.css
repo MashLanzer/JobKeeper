@@ -139,12 +139,29 @@
     }
   }
 
+  /* Pop sutil para badges/contadores que aparecen. */
+  .badge-pop {
+    animation: badgePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes badgePop {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
   /* Respeta la preferencia de reducir movimiento */
   @media (prefers-reduced-motion: reduce) {
     .page-transition {
       animation: none;
     }
     .stagger-in > * {
+      animation: none;
+    }
+    .badge-pop {
       animation: none;
     }
   }

@@ -64,7 +64,7 @@ export function BottomNav() {
               )}>
                 <Icon className={cn('h-6 w-6 transition-transform', isActive && 'scale-110')} />
                 {href === '/mas' && attention > 0 && (
-                  <span className="absolute top-0.5 right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                  <span key={attention} className="absolute top-0.5 right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none badge-pop">
                     {attention}
                   </span>
                 )}
