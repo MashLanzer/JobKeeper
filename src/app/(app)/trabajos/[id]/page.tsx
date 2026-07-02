@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation, Circle, ListChecks, ImageIcon, Plus, X, Star } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, MapPin, Clock, DollarSign, User, Tag, FileText, CreditCard, Copy, ClipboardList, Share2, CheckCircle2, Play, Navigation, Circle, ListChecks, ImageIcon, Plus, X, Star, Mic } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -22,6 +22,7 @@ import { getPdfPrefs } from '@/lib/pdf-prefs'
 import { cancelJobReminder } from '@/lib/local-notifications'
 import { buildChecklist, type ChecklistItem } from '@/lib/checklist'
 import { SignaturePad } from '@/components/jobs/signature-pad'
+import { VoiceNotes } from '@/components/jobs/voice-notes'
 import { createTemplate } from '@/services/templates'
 import { getPayments, addPayment, deletePayment, type Payment } from '@/services/payments'
 import { getPhotos, uploadPhoto, deletePhoto, type JobPhoto } from '@/services/photos'
@@ -1550,6 +1551,17 @@ export default function JobDetailPage() {
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Voice notes */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Mic className="h-4 w-4 text-primary" />
+            Notas de voz
+          </h3>
+          <VoiceNotes jobId={job.id} />
         </CardContent>
       </Card>
 
