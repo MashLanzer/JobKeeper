@@ -106,6 +106,11 @@ export default function JobDetailPage() {
 
   const materialsCost = jobMaterials.reduce((s, m) => s + Number(m.quantity) * Number(m.unit_price), 0)
   const jobProfit = (job ? Number(job.price) : 0) - materialsCost - expensesTotal
+  // Valor informativo del tiempo trabajado (no se resta de la ganancia).
+  const workedMs = job?.clock_in && job?.clock_out
+    ? new Date(job.clock_out).getTime() - new Date(job.clock_in).getTime()
+    : 0
+  const laborValue = (workedMs / 3_600_000) * (Number(hourlyRate) || 0)
 
   const handleAddMaterial = async () => {
     const name = matName.trim()
@@ -1926,6 +1931,12 @@ export default function JobDetailPage() {
                   </span>
                 </div>
               </>
+            )}
+            {laborValue > 0 && (
+              <div className="flex justify-between text-xs text-muted-foreground/80 pt-1">
+                <span>Tu tiempo ({fmtDur(workedMs)}) · informativo</span>
+                <span>≈ {formatCurrency(laborValue)}</span>
+              </div>
             )}
           </div>
 
