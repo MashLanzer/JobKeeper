@@ -61,6 +61,7 @@ export default function JobDetailPage() {
   const [generatingOrder, setGeneratingOrder] = useState(false)
   const [tags, setTags] = useState<string[]>([])
   const [, setTick] = useState(0) // fuerza re-render para el cronómetro en curso
+  const [hourlyRate, setHourlyRate] = useState('') // tarifa por hora (local)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [newTask, setNewTask] = useState('')
@@ -343,6 +344,7 @@ export default function JobDetailPage() {
 
   useEffect(() => {
     getSettings().then(setSettings).catch(() => {})
+    try { setHourlyRate(localStorage.getItem('hourly_rate') || '') } catch { /* ignore */ }
   }, [])
 
   // Tick cada segundo mientras el cronómetro esté en curso.
@@ -1222,37 +1224,71 @@ export default function JobDetailPage() {
         const elapsed = job.clock_in
           ? (job.clock_out ? new Date(job.clock_out).getTime() : Date.now()) - new Date(job.clock_in).getTime()
           : 0
+        const hours = elapsed / 3_600_000
+        const rate = Number(hourlyRate) || 0
+        const laborCost = hours * rate
         return (
           <Card>
-            <CardContent className="p-4 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Clock className={cn('h-4 w-4', running ? 'text-primary' : 'text-muted-foreground')} />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    {running ? 'En curso' : done ? 'Tiempo trabajado' : 'Cronómetro'}
-                  </p>
-                  {(running || done) && (
-                    <p className={cn('text-xs', running ? 'text-primary' : 'text-muted-foreground')}>{fmtDur(elapsed)}</p>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Clock className={cn('h-4 w-4', running ? 'text-primary' : 'text-muted-foreground')} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {running ? 'En curso' : done ? 'Tiempo trabajado' : 'Cronómetro'}
+                    </p>
+                    {(running || done) && (
+                      <p className={cn('text-xs', running ? 'text-primary' : 'text-muted-foreground')}>{fmtDur(elapsed)}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {!job.clock_in && (
+                    <Button size="sm" variant="outline" onClick={startTimer}>
+                      <Play className="h-4 w-4 mr-1.5" /> Iniciar
+                    </Button>
+                  )}
+                  {running && (
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={stopTimer}>
+                      Detener
+                    </Button>
+                  )}
+                  {done && (
+                    <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={resetTimer}>
+                      Reiniciar
+                    </Button>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {!job.clock_in && (
-                  <Button size="sm" variant="outline" onClick={startTimer}>
-                    <Play className="h-4 w-4 mr-1.5" /> Iniciar
-                  </Button>
-                )}
-                {running && (
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={stopTimer}>
-                    Detener
-                  </Button>
-                )}
-                {done && (
-                  <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={resetTimer}>
-                    Reiniciar
-                  </Button>
-                )}
-              </div>
+
+              {(running || done) && (
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Tarifa/hora</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={hourlyRate}
+                      onChange={(e) => {
+                        setHourlyRate(e.target.value)
+                        try { localStorage.setItem('hourly_rate', e.target.value) } catch { /* ignore */ }
+                      }}
+                      className="h-8 w-20 text-right"
+                    />
+                  </div>
+                  {rate > 0 && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Mano de obra ≈</p>
+                      <p className="text-sm font-semibold text-money">
+                        {formatCurrency(laborCost)}{' '}
+                        <span className="text-xs font-normal text-muted-foreground">({hours.toFixed(1)} h)</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )
