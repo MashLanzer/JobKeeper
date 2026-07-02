@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog'
 import { ClientForm } from '@/components/clients/client-form'
 import { EquipmentSection } from '@/components/clients/equipment-section'
+import { ClientDocuments } from '@/components/clients/client-documents'
 import { TagEditor } from '@/components/shared/tag-editor'
 
 export default function ClienteDetailPage() {
@@ -487,6 +488,19 @@ export default function ClienteDetailPage() {
 
       {/* Equipment */}
       <EquipmentSection clientId={id} jobs={jobs} />
+
+      {/* Documentos */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            Documentos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ClientDocuments clientId={id} />
+        </CardContent>
+      </Card>
 
       {/* Bitácora de contacto */}
       <Card>
