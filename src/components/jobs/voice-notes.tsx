@@ -21,7 +21,15 @@ export function VoiceNotes({ jobId }: { jobId: string }) {
   const [recording, setRecording] = useState(false)
   const [busy, setBusy] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
+
+  // Libera el micrófono si el componente se desmonta mientras graba.
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+    }
+  }, [])
 
   const load = async () => {
     const data = await getJobAudio(jobId)
@@ -65,6 +73,7 @@ export function VoiceNotes({ jobId }: { jobId: string }) {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
       const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
       chunksRef.current = []
