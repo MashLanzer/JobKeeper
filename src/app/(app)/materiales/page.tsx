@@ -191,7 +191,7 @@ export default function MaterialesPage() {
               variant="ghost"
               size="icon"
               className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-              onClick={() => setSearch('')}
+              onClick={() => setSearch('')} aria-label="Limpiar búsqueda"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -299,12 +299,12 @@ export default function MaterialesPage() {
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
+                    <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => openEdit(m)}>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <ConfirmDialog
                       trigger={
-                        <Button variant="ghost" size="icon" className="text-destructive">
+                        <Button variant="ghost" size="icon" aria-label="Eliminar" className="text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       }

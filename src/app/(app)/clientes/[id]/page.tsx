@@ -293,7 +293,7 @@ export default function ClienteDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" aria-label="Volver" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">Cliente</h1>
@@ -301,7 +301,7 @@ export default function ClienteDetailPage() {
         <div className="flex items-center gap-1">
           <Dialog open={editOpen} onOpenChange={setEditOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="Editar">
                 <Edit className="h-4 w-4" />
               </Button>
             </DialogTrigger>
@@ -319,7 +319,7 @@ export default function ClienteDetailPage() {
           </Dialog>
           <ConfirmDialog
             trigger={
-              <Button variant="ghost" size="icon" className="text-destructive">
+              <Button variant="ghost" size="icon" aria-label="Eliminar" className="text-destructive">
                 <Trash2 className="h-4 w-4" />
               </Button>
             }

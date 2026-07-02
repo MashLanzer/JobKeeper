@@ -557,13 +557,13 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
         <div className="space-y-3">
           {/* Day navigation */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={() => shiftDay(-1)}>
+            <Button variant="ghost" size="icon" aria-label="Día anterior" onClick={() => shiftDay(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <h2 className="text-sm font-semibold text-center capitalize">
               {dayDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
             </h2>
-            <Button variant="ghost" size="icon" onClick={() => shiftDay(1)}>
+            <Button variant="ghost" size="icon" aria-label="Día siguiente" onClick={() => shiftDay(1)}>
               <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
@@ -617,14 +617,14 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
         <div className="space-y-3">
           {/* Week navigation */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={() => shiftWeek(-1)}>
+            <Button variant="ghost" size="icon" aria-label="Semana anterior" onClick={() => shiftWeek(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <h2 className="text-sm font-semibold text-center">
               {weekDays[0].getDate()} {MONTH_NAMES[weekDays[0].getMonth()].slice(0, 3)} —{' '}
               {weekDays[6].getDate()} {MONTH_NAMES[weekDays[6].getMonth()].slice(0, 3)}
             </h2>
-            <Button variant="ghost" size="icon" onClick={() => shiftWeek(1)}>
+            <Button variant="ghost" size="icon" aria-label="Semana siguiente" onClick={() => shiftWeek(1)}>
               <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
@@ -717,13 +717,13 @@ export function CalendarView({ jobs, maintenances = [], year, month, onMonthChan
       <>
       {/* Month navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={prevMonth}>
+        <Button variant="ghost" size="icon" aria-label="Mes anterior" onClick={prevMonth}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <h2 className="text-lg font-semibold">
           {MONTH_NAMES[month - 1]} {year}
         </h2>
-        <Button variant="ghost" size="icon" onClick={nextMonth}>
+        <Button variant="ghost" size="icon" aria-label="Mes siguiente" onClick={nextMonth}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>

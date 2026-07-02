@@ -1135,7 +1135,7 @@ export default function JobDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" aria-label="Volver" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -1151,7 +1151,7 @@ export default function JobDetailPage() {
           </Button>
           <ConfirmDialog
             trigger={
-              <Button variant="ghost" size="icon" className="text-destructive">
+              <Button variant="ghost" size="icon" aria-label="Eliminar" className="text-destructive">
                 <Trash2 className="h-4 w-4" />
               </Button>
             }

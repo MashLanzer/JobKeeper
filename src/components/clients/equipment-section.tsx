@@ -154,12 +154,12 @@ export function EquipmentSection({ clientId, jobs = [] }: { clientId: string; jo
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>
+                <Button variant="ghost" size="icon" aria-label="Editar" className="h-8 w-8" onClick={() => openEdit(e)}>
                   <Edit className="h-3.5 w-3.5" />
                 </Button>
                 <ConfirmDialog
                   trigger={
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                    <Button variant="ghost" size="icon" aria-label="Eliminar" className="h-8 w-8 text-destructive">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   }

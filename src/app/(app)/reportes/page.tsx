@@ -459,11 +459,11 @@ export default function ReportesPage() {
 
       {/* Month selector */}
       <div className="flex items-center justify-between bg-card rounded-xl border border-border p-3">
-        <Button variant="ghost" size="icon" onClick={prevMonth}>
+        <Button variant="ghost" size="icon" aria-label="Mes anterior" onClick={prevMonth}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <span className="font-semibold">{MONTH_NAMES[month - 1]} {year}</span>
-        <Button variant="ghost" size="icon" onClick={nextMonth} disabled={atCurrentMonth}>
+        <Button variant="ghost" size="icon" aria-label="Mes siguiente" onClick={nextMonth} disabled={atCurrentMonth}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
